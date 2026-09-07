@@ -229,4 +229,5 @@ git checkout development			(switching to development branch)
 git pull origin development			(updating development branch)
 
 git merge feature/screen-name			(merging your feature branch with the development branch)
+git push -u origin development			(finally pushing the merge to GitHub)
 ```
