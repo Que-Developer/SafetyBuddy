@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View } from "react-native";
+zimport { StyleSheet, Text, View } from "react-native";
 
 export default function HomeScreen() {
   return (
