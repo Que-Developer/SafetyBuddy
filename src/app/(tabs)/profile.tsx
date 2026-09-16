@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons'; // Standard Expo icon pack
 import { useState } from 'react';
 import { ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native'; // import React naitive components
 import { SafeAreaView } from 'react-native-safe-area-context';
+
 //Remember Diarra the styles.whaterver is like a css ID for the styles.create
 export default function ProfileScreen() {
   // State variables for the toggles (Dark mode, Privacy switches)
