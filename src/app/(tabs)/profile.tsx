@@ -13,6 +13,47 @@ export default function ProfileScreen() {
   const [walkWithMe, setWalkWithMe] = useState(true);
   const [masterSwitch, setMasterSwitch] = useState(false);
 
+  //  STATE FOR THE CONTACT LIST
+  const [contacts, setContacts] = useState([
+    { id: '1', name: 'Mother', phone: '+27 79 757 4730', relationship: '' }
+  ]);
+
+  //  STATE FOR THE INPUT FIELDS
+  const [newName, setNewName] = useState('');
+  const [newPhone, setNewPhone] = useState('');
+  const [newRelationship, setNewRelationship] = useState('');
+
+  //  FUNCTION TO ADD A NEW CONTACT
+  const handleAddContact = () => {
+    // Basic validation Don't add if name or phone is empty
+    if (newName.trim() === '' || newPhone.trim() === '') {
+      alert('Missing Info please enter at least a name and phone number.');
+      return;
+    }
+
+    // Create the new contact object
+    const newContact = {
+      id: Date.now().toString(), // Generates a unique ID based on time
+      name: newName,
+      phone: newPhone,
+      relationship: newRelationship,
+    };
+
+    // Add it to the existing list and clear the text boxes
+    setContacts([...contacts, newContact]);
+    setNewName('');
+    setNewPhone('');
+    setNewRelationship('');
+  };
+
+  // FUNCTION TO DELETE A CONTACT
+  const handleDeleteContact = (id: string) => {
+    // Keep only the contacts whose ID does NOT match the one we want to delete
+    const updatedContacts = contacts.filter((contact) => contact.id !== id);
+    setContacts(updatedContacts);
+  };
+
+
   return (
     // SafeAreaView ensures content doesn't go under the phone's notch/status bar
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
@@ -46,16 +87,24 @@ export default function ProfileScreen() {
         {/* --- TRUSTED CONTACTS --- */}
         <Text style={styles.sectionTitle}>TRUSTED CONTACTS</Text>
         
-        {/* Existing Contact Card */}
-        <View style={styles.contactCard}>
-          <View>
-            <Text style={styles.contactName}>Mother</Text>
-            <Text style={styles.contactPhone}>+27 79 757 4730</Text>
+        {/* Dynamic List of Contacts */}
+        {contacts.map((contact) => (
+          <View key={contact.id} style={styles.contactCard}>
+            <View>
+              <Text style={styles.contactName}>{contact.name}</Text>
+              <Text style={styles.contactPhone}>{contact.phone}</Text>
+              {/* Only show relationship if it exists */}
+              {contact.relationship ? (
+                <Text style={styles.contactRelationship}>{contact.relationship}</Text>
+              ) : null}
+            </View>
+            
+            {/* Delete Button */}
+            <TouchableOpacity onPress={() => handleDeleteContact(contact.id)}>
+              <Ionicons name="trash-outline" size={24} color="#000458" />
+            </TouchableOpacity>
           </View>
-          <TouchableOpacity>
-            <Ionicons name="trash-outline" size={24} color="#000458" />
-          </TouchableOpacity>
-        </View>
+        ))}
 
         {/* Add Contact Form */}
         <View style={styles.addContactForm}>
@@ -63,20 +112,29 @@ export default function ProfileScreen() {
             style={styles.input} 
             placeholder="Name" 
             placeholderTextColor="#888"
+            value={newName}                 // Connect to state
+            onChangeText={setNewName}       // Update state when typing
           />
           <View style={styles.rowInput}>
             <TextInput 
               style={[styles.input, { flex: 2, marginRight: 10 }]} 
               placeholder="Phone" 
               placeholderTextColor="#888"
+              keyboardType="phone-pad"      // Shows number pad on phone
+              value={newPhone}
+              onChangeText={setNewPhone}
             />
             <TextInput 
               style={[styles.input, { flex: 1 }]} 
               placeholder="Relationship" 
               placeholderTextColor="#888"
+              value={newRelationship}
+              onChangeText={setNewRelationship}
             />
           </View>
-          <TouchableOpacity style={styles.addButton}>
+          
+          {/* Button triggers handleAddContact */}
+          <TouchableOpacity style={styles.addButton} onPress={handleAddContact}>
             <Ionicons name="person-add-outline" size={20} color="#000458" />
             <Text style={styles.addButtonText}>Add trusted contact</Text>
           </TouchableOpacity>
@@ -136,8 +194,7 @@ export default function ProfileScreen() {
   );
 }
 
-// --- STYLES ---
-// This is where we define how everything looks (colors, spacing, fonts)
+// This is where we define how everything looks 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -246,6 +303,12 @@ const styles = StyleSheet.create({
     color: '#000458',
     fontWeight: 'bold',
     marginLeft: 10,
+  },
+  contactRelationship: {
+    fontSize: 12,
+    color: '#000458',
+    opacity: 0.6,
+    marginTop: 2,
   },
   toggleCard: {
     backgroundColor: '#fce07a',
