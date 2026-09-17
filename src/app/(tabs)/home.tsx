@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { router } from "expo-router"
 
 // ---- Design tokens -------------------------------------------------
 const COLORS = {
@@ -63,11 +64,6 @@ function AlertCard({ time, title, body }: AlertProps) {
 export default function HomeScreen() {
   return (
     <SafeAreaView style={styles.safe}>
-      {/* Status bar mock */}
-      <View style={styles.statusBar}>
-        <Text style={styles.statusTime}>15:45</Text>
-        <Text style={styles.statusIcons}>📶  📡  🔋</Text>
-      </View>
 
       <ScrollView
         contentContainerStyle={styles.scroll}
@@ -81,7 +77,7 @@ export default function HomeScreen() {
         </Text>
 
         {/* Emergency SOS */}
-        <TouchableOpacity style={styles.sosCard} activeOpacity={0.9}>
+        <TouchableOpacity style={styles.sosCard} activeOpacity={0.9} onPress={() => router.push("/(tabs)/panic")}>
           <View style={styles.sosIconWrap}>
             <Text style={styles.sosIcon}>🔔</Text>
           </View>
@@ -98,7 +94,7 @@ export default function HomeScreen() {
         {/* 2x2 Tiles */}
         <View style={styles.grid}>
           <Tile emoji="🚶" title="Safe Walk" subtitle="Best route" />
-          <Tile emoji="👥" title="Walk with me" subtitle="Trusted Contact" />
+          <Tile emoji="👥" title="Walk with me" subtitle="Trusted Contact" onPress={() => router.push("/(tabs)/map")}/>
           <Tile emoji="📄" title="Report" subtitle="Anonymous OK" />
           <Tile emoji="📞" title="Contacts" subtitle="Anonymous OK" />
         </View>
@@ -138,14 +134,6 @@ export default function HomeScreen() {
         <View style={{ height: 100 }} />
       </ScrollView>
 
-      {/* Bottom Tab Bar */}
-      <View style={styles.tabBar}>
-        <TabItem emoji="🏠" label="Home" active />
-        <TabItem emoji="🗺️" label="Map" />
-        <SosTabButton />
-        <TabItem emoji="📢" label="Report" />
-        <TabItem emoji="👤" label="Profile" />
-      </View>
     </SafeAreaView>
   );
 }
@@ -170,13 +158,6 @@ function TabItem({
   );
 }
 
-function SosTabButton() {
-  return (
-    <TouchableOpacity style={styles.sosTab} activeOpacity={0.85}>
-      <Text style={styles.sosTabIcon}>🔔</Text>
-    </TouchableOpacity>
-  );
-}
 
 // ---- Styles --------------------------------------------------------
 const CARD_SHADOW = {
