@@ -28,9 +28,22 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#208AEF",
+          "backgroundColor": "#FFD24C",
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 76
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "SafetyBuddy needs your location to share with campus security and trusted contacts when you request help."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "SafetyBuddy needs photo access so you can attach images to safety reports.",
+          "cameraPermission": "SafetyBuddy needs camera access so you can photograph a safety concern."
         }
       ]
     ],
