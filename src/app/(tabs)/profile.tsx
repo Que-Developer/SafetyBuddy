@@ -169,29 +169,85 @@ export default function ProfileScreen() {
         <Text style={[styles.sectionTitle, { color: colors.navy }]}>
           APPEARANCE
         </Text>
-        <View style={[styles.toggleCard, { backgroundColor: colors.card }]}>
-          <View style={styles.toggleTextContainer}>
-            <View style={styles.themeTitleRow}>
+        <View style={[styles.themeCard, { backgroundColor: colors.card }]}>
+          <Text style={[styles.toggleTitle, { color: colors.text }]}>
+            Light & dark theme
+          </Text>
+          <Text
+            style={[
+              styles.toggleSubtitle,
+              { color: colors.textMuted, marginBottom: 12 },
+            ]}
+          >
+            Yellow for day · Navy for night
+          </Text>
+          <View
+            style={[
+              styles.themeToggleTrack,
+              { backgroundColor: colors.input, borderColor: colors.tileBorder },
+            ]}
+          >
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityState={{ selected: selectedTheme === "yellow" }}
+              accessibilityLabel="Light yellow theme"
+              activeOpacity={0.85}
+              onPress={() => setTheme("yellow")}
+              style={[
+                styles.themeToggleOption,
+                selectedTheme === "yellow" && {
+                  backgroundColor: "#FFD24C",
+                },
+              ]}
+            >
               <Ionicons
-                name={selectedTheme === "dark" ? "moon" : "sunny"}
-                size={18}
-                color={colors.navy}
+                name="sunny"
+                size={16}
+                color={selectedTheme === "yellow" ? "#000458" : colors.textMuted}
               />
-              <Text style={[styles.toggleTitle, { color: colors.text }]}>
-                {selectedTheme === "dark" ? "Navy night" : "Yellow day"}
+              <Text
+                style={[
+                  styles.themeToggleLabel,
+                  {
+                    color:
+                      selectedTheme === "yellow" ? "#000458" : colors.textMuted,
+                  },
+                ]}
+              >
+                Light
               </Text>
-            </View>
-            <Text style={[styles.toggleSubtitle, { color: colors.textMuted }]}>
-              Switch between yellow day and navy night theme
-            </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityState={{ selected: selectedTheme === "dark" }}
+              accessibilityLabel="Dark navy theme"
+              activeOpacity={0.85}
+              onPress={() => setTheme("dark")}
+              style={[
+                styles.themeToggleOption,
+                selectedTheme === "dark" && {
+                  backgroundColor: "#002B5B",
+                },
+              ]}
+            >
+              <Ionicons
+                name="moon"
+                size={16}
+                color={selectedTheme === "dark" ? "#FFD24C" : colors.textMuted}
+              />
+              <Text
+                style={[
+                  styles.themeToggleLabel,
+                  {
+                    color:
+                      selectedTheme === "dark" ? "#FFD24C" : colors.textMuted,
+                  },
+                ]}
+              >
+                Dark
+              </Text>
+            </TouchableOpacity>
           </View>
-          <Switch
-            value={selectedTheme === "dark"}
-            onValueChange={(on) => setTheme(on ? "dark" : "yellow")}
-            trackColor={{ false: "#FFD24C", true: "#002B5B" }}
-            thumbColor={colors.white}
-            accessibilityLabel="Toggle yellow day and navy night theme"
-          />
         </View>
 
         <Text style={[styles.sectionTitle, { color: colors.navy }]}>
@@ -321,11 +377,31 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 8,
   },
+  themeCard: {
+    padding: 14,
+    borderRadius: 12,
+    marginBottom: 16,
+  },
   toggleTextContainer: { flex: 1, paddingRight: 10 },
-  themeTitleRow: {
+  themeToggleTrack: {
+    flexDirection: "row",
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    padding: 4,
+    gap: 4,
+  },
+  themeToggleOption: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    justifyContent: "center",
+    gap: 6,
+    borderRadius: 10,
+    paddingVertical: 12,
+  },
+  themeToggleLabel: {
+    fontSize: 14,
+    fontWeight: "800",
   },
   toggleTitle: { fontSize: 14, fontWeight: "bold" },
   toggleSubtitle: { fontSize: 12, marginTop: 2 },

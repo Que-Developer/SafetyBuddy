@@ -8,7 +8,7 @@ import { LogBox } from "react-native";
 LogBox.ignoreAllLogs(true);
 
 function RootStack() {
-  const { colors } = useTheme();
+  const { colors, selectedTheme } = useTheme();
   const headerOpts = {
     headerStyle: { backgroundColor: colors.bg },
     headerTintColor: colors.navy,
@@ -18,7 +18,7 @@ function RootStack() {
 
   return (
     <>
-      <StatusBar style={colors.bg === colors.navy ? "light" : "dark"} />
+      <StatusBar style={selectedTheme === "dark" ? "light" : "dark"} />
       <AuthGate>
         <Stack>
           <Stack.Screen name="index" options={{ headerShown: false }} />

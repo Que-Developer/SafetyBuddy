@@ -96,7 +96,7 @@ export function GritHelpButton({ onActivated, onCancelled }: Props) {
       <View style={styles.glowRing}>
         <LinearGradient
           colors={
-            colors.bg === "#1a2332"
+            colors.bg === "#002B5B" || colors.bg === "#1a2332"
               ? ["#2A3A55", "#1E2E45", "#152238"]
               : ["#1E4A88", "#143560", "#0C2348"]
           }
