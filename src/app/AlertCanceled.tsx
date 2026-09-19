@@ -2,36 +2,44 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { COLORS } from "@/constants/theme";
+import { useTheme } from "@/context/ThemeContext";
 
 export default function AlertCanceledScreen() {
   const router = useRouter();
+  const { colors } = useTheme();
 
   return (
-    <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: colors.bg }]}
+      edges={["top", "bottom"]}
+    >
       <View style={styles.content}>
         <View style={styles.greenCircle}>
           <Ionicons name="checkmark" size={50} color="#FFF" />
         </View>
 
-        <Text style={styles.title}>Alert cancelled</Text>
-        <Text style={styles.subtitle}>
+        <Text style={[styles.title, { color: colors.text }]}>Alert cancelled</Text>
+        <Text style={[styles.subtitle, { color: colors.textMuted }]}>
           You can send another alert at any time. If you still feel unsure,
           Call campus security or open More Help — support is available.
         </Text>
 
         <TouchableOpacity
-          style={styles.homeButton}
+          style={[styles.homeButton, { backgroundColor: colors.accent }]}
           onPress={() => router.replace("/(tabs)/home")}
         >
-          <Text style={styles.homeButtonText}>Return to Home</Text>
+          <Text style={[styles.homeButtonText, { color: colors.bg }]}>
+            Return to Home
+          </Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           style={styles.secondary}
           onPress={() => router.replace("/support")}
         >
-          <Text style={styles.secondaryText}>Talk to support services</Text>
+          <Text style={[styles.secondaryText, { color: colors.accent }]}>
+            Talk to support services
+          </Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -39,7 +47,7 @@ export default function AlertCanceledScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.bg },
+  container: { flex: 1 },
   content: {
     flex: 1,
     justifyContent: "center",
@@ -58,18 +66,15 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 26,
     fontWeight: "bold",
-    color: COLORS.white,
     marginBottom: 10,
   },
   subtitle: {
     fontSize: 16,
-    color: COLORS.textMuted,
     textAlign: "center",
     marginBottom: 40,
     lineHeight: 22,
   },
   homeButton: {
-    backgroundColor: COLORS.accent,
     paddingVertical: 18,
     paddingHorizontal: 40,
     borderRadius: 30,
@@ -77,13 +82,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   homeButtonText: {
-    color: COLORS.bgDeep,
     fontSize: 16,
     fontWeight: "bold",
   },
   secondary: { marginTop: 14 },
   secondaryText: {
-    color: COLORS.accent,
     fontWeight: "700",
     textDecorationLine: "underline",
   },

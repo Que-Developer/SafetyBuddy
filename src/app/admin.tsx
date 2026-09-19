@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   ScrollView,
   StyleSheet,
@@ -13,17 +14,22 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { CARD_SHADOW, COLORS } from "@/constants/theme";
 import {
-  CAMPUS_ZONES,
-  EMERGENCY_CONTACTS,
-  INCIDENT_CATEGORIES,
-  RESPONDERS,
-  SAFETY_ALERTS,
-  SAFETY_RESOURCES,
+  createHelpContact,
+  createSafetyAlert,
+  fetchCampusZones,
+  fetchHelpContacts,
+  fetchReportCategories,
+  fetchResponders,
+  fetchSafetyAlerts,
+  fetchSafetyResources,
+  setReportCategoryActive,
   type CampusZone,
-  type EmergencyContact,
-  type IncidentCategory,
+  type HelpContact,
+  type ReportCategory,
+  type Responder,
+  type SafetyAlert,
   type SafetyResource,
-} from "@/data/mockData";
+} from "@/services/campusApi";
 import { listUsers, type AppUser } from "@/services/database";
 
 type SectionKey =
@@ -36,65 +42,114 @@ type SectionKey =
   | "categories";
 
 export default function AdminScreen() {
-  const [contacts, setContacts] = useState(EMERGENCY_CONTACTS);
-  const [zones] = useState(CAMPUS_ZONES);
-  const [resources] = useState(SAFETY_RESOURCES);
-  const [categories, setCategories] = useState(INCIDENT_CATEGORIES);
+  const [contacts, setContacts] = useState<HelpContact[]>([]);
+  const [zones, setZones] = useState<CampusZone[]>([]);
+  const [resources, setResources] = useState<SafetyResource[]>([]);
+  const [responders, setResponders] = useState<Responder[]>([]);
+  const [categories, setCategories] = useState<ReportCategory[]>([]);
   const [users, setUsers] = useState<AppUser[]>([]);
+  const [issuedAlerts, setIssuedAlerts] = useState<SafetyAlert[]>([]);
   const [newContactLabel, setNewContactLabel] = useState("");
   const [newContactNumber, setNewContactNumber] = useState("");
   const [newAlertTitle, setNewAlertTitle] = useState("");
-  const [issuedAlerts, setIssuedAlerts] = useState(SAFETY_ALERTS);
   const [openSection, setOpenSection] = useState<SectionKey>("contacts");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    listUsers().then(setUsers).catch(() => setUsers([]));
+    Promise.all([
+      fetchHelpContacts(),
+      fetchSafetyAlerts(),
+      fetchCampusZones(),
+      fetchSafetyResources(),
+      fetchResponders(),
+      fetchReportCategories(),
+      listUsers().catch(() => [] as AppUser[]),
+    ])
+      .then(([c, alerts, z, res, resp, cats, u]) => {
+        setContacts(c);
+        setIssuedAlerts(alerts);
+        setZones(z);
+        setResources(res);
+        setResponders(resp);
+        setCategories(cats);
+        setUsers(u);
+      })
+      .catch((e) =>
+        setError(e instanceof Error ? e.message : "Failed to load admin data")
+      )
+      .finally(() => setLoading(false));
   }, []);
 
   const toggleSection = (key: SectionKey) => {
     setOpenSection((prev) => (prev === key ? prev : key));
   };
 
-  const addContact = () => {
+  const addContact = async () => {
     if (!newContactLabel.trim() || !newContactNumber.trim()) {
-      Alert.alert("Missing fields", "Enter a label and number (sample only).");
+      Alert.alert("Missing fields", "Enter a label and number.");
       return;
     }
-    const contact: EmergencyContact = {
-      id: `EC-${Date.now()}`,
-      label: newContactLabel.trim(),
-      number: newContactNumber.trim(),
-    };
-    setContacts((prev) => [...prev, contact]);
-    setNewContactLabel("");
-    setNewContactNumber("");
+    setBusy(true);
+    try {
+      const contact = await createHelpContact({
+        label: newContactLabel.trim(),
+        number: newContactNumber.trim(),
+      });
+      setContacts((prev) => [...prev, contact]);
+      setNewContactLabel("");
+      setNewContactNumber("");
+    } catch (e) {
+      Alert.alert(
+        "Could not add contact",
+        e instanceof Error ? e.message : "Please try again."
+      );
+    } finally {
+      setBusy(false);
+    }
   };
 
-  const issueAlert = () => {
+  const issueAlert = async () => {
     if (!newAlertTitle.trim()) {
-      Alert.alert("Missing title", "Enter an alert title (sample only).");
+      Alert.alert("Missing title", "Enter an alert title.");
       return;
     }
-    setIssuedAlerts((prev) => [
-      {
-        id: `ALT-${Date.now()}`,
+    setBusy(true);
+    try {
+      const alert = await createSafetyAlert({
         title: newAlertTitle.trim(),
-        message: "Admin-issued sample alert for demo purposes.",
+        message: "Admin-issued campus safety alert.",
         affectedArea: "Campus-wide",
-        dateTime: new Date().toISOString().slice(0, 16).replace("T", " "),
         recommendedAction: "Follow campus guidance and stay aware.",
         alertLevel: "Information",
-      },
-      ...prev,
-    ]);
-    setNewAlertTitle("");
-    Alert.alert("Alert issued", "Simulated safety alert published to students.");
+      });
+      setIssuedAlerts((prev) => [alert, ...prev]);
+      setNewAlertTitle("");
+      Alert.alert("Alert issued", "Safety alert published to students.");
+    } catch (e) {
+      Alert.alert(
+        "Could not issue alert",
+        e instanceof Error ? e.message : "Please try again."
+      );
+    } finally {
+      setBusy(false);
+    }
   };
 
-  const toggleCategory = (id: string) => {
-    setCategories((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, active: !c.active } : c))
-    );
+  const toggleCategory = async (id: string, active: boolean) => {
+    setBusy(true);
+    try {
+      const next = await setReportCategoryActive(id, !active);
+      setCategories(next);
+    } catch (e) {
+      Alert.alert(
+        "Update failed",
+        e instanceof Error ? e.message : "Could not update category."
+      );
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -107,11 +162,18 @@ export default function AdminScreen() {
         <View style={styles.banner}>
           <Ionicons name="construct-outline" size={20} color={COLORS.navy} />
           <Text style={styles.bannerText}>
-            Admin Content Manager (FR11) — mock interface with dummy data for
-            emergency contacts, alerts, zones, resources, responders, and
-            categories.
+            Admin Content Manager (FR11) — manage emergency contacts, alerts,
+            zones, resources, responders, and report categories from the campus
+            database.
           </Text>
         </View>
+
+        {loading ? (
+          <ActivityIndicator color={COLORS.navy} style={{ marginBottom: 16 }} />
+        ) : null}
+        {error ? (
+          <Text style={{ color: COLORS.textMuted, marginBottom: 12 }}>{error}</Text>
+        ) : null}
 
         <SectionHeader
           title="Emergency Contact Numbers"
@@ -120,26 +182,33 @@ export default function AdminScreen() {
         />
         {openSection === "contacts" && (
           <View style={styles.sectionBody}>
+            {contacts.length === 0 && !loading ? (
+              <Text style={styles.emptyText}>No help contacts yet.</Text>
+            ) : null}
             {contacts.map((c) => (
               <ContactRow key={c.id} contact={c} />
             ))}
             <TextInput
               style={styles.input}
-              placeholder="Contact label (sample)"
+              placeholder="Contact label"
               placeholderTextColor="#888"
               value={newContactLabel}
               onChangeText={setNewContactLabel}
             />
             <TextInput
               style={styles.input}
-              placeholder="Phone number (sample)"
+              placeholder="Phone number"
               placeholderTextColor="#888"
               keyboardType="phone-pad"
               value={newContactNumber}
               onChangeText={setNewContactNumber}
             />
-            <TouchableOpacity style={styles.actionBtn} onPress={addContact}>
-              <Text style={styles.actionBtnText}>Add / Edit Contact</Text>
+            <TouchableOpacity
+              style={[styles.actionBtn, { opacity: busy ? 0.7 : 1 }]}
+              onPress={addContact}
+              disabled={busy}
+            >
+              <Text style={styles.actionBtnText}>Add Contact</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -151,6 +220,9 @@ export default function AdminScreen() {
         />
         {openSection === "alerts" && (
           <View style={styles.sectionBody}>
+            {issuedAlerts.length === 0 && !loading ? (
+              <Text style={styles.emptyText}>No safety alerts yet.</Text>
+            ) : null}
             {issuedAlerts.slice(0, 3).map((a) => (
               <View key={a.id} style={styles.listCard}>
                 <Text style={styles.listTitle}>{a.title}</Text>
@@ -161,13 +233,17 @@ export default function AdminScreen() {
             ))}
             <TextInput
               style={styles.input}
-              placeholder="New alert title (sample)"
+              placeholder="New alert title"
               placeholderTextColor="#888"
               value={newAlertTitle}
               onChangeText={setNewAlertTitle}
             />
-            <TouchableOpacity style={styles.actionBtn} onPress={issueAlert}>
-              <Text style={styles.actionBtnText}>Broadcast Sample Alert</Text>
+            <TouchableOpacity
+              style={[styles.actionBtn, { opacity: busy ? 0.7 : 1 }]}
+              onPress={issueAlert}
+              disabled={busy}
+            >
+              <Text style={styles.actionBtnText}>Broadcast Alert</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -179,7 +255,10 @@ export default function AdminScreen() {
         />
         {openSection === "zones" && (
           <View style={styles.sectionBody}>
-            {zones.map((z: CampusZone) => (
+            {zones.length === 0 && !loading ? (
+              <Text style={styles.emptyText}>No campus zones.</Text>
+            ) : null}
+            {zones.map((z) => (
               <View key={z.id} style={styles.listCard}>
                 <Text style={styles.listTitle}>{z.name}</Text>
                 <Text style={styles.listMeta}>{z.description}</Text>
@@ -198,7 +277,10 @@ export default function AdminScreen() {
         />
         {openSection === "resources" && (
           <View style={styles.sectionBody}>
-            {resources.map((r: SafetyResource) => (
+            {resources.length === 0 && !loading ? (
+              <Text style={styles.emptyText}>No safety resources.</Text>
+            ) : null}
+            {resources.map((r) => (
               <View key={r.id} style={styles.listCard}>
                 <Text style={styles.listTitle}>{r.title}</Text>
                 <Text style={styles.listMeta}>{r.summary}</Text>
@@ -225,7 +307,10 @@ export default function AdminScreen() {
         />
         {openSection === "responders" && (
           <View style={styles.sectionBody}>
-            {RESPONDERS.map((r) => (
+            {responders.length === 0 && !loading ? (
+              <Text style={styles.emptyText}>No responders listed.</Text>
+            ) : null}
+            {responders.map((r) => (
               <View key={r.id} style={styles.listCard}>
                 <Text style={styles.listTitle}>{r.name}</Text>
                 <Text style={styles.listMeta}>
@@ -244,6 +329,9 @@ export default function AdminScreen() {
         />
         {openSection === "users" && (
           <View style={styles.sectionBody}>
+            {users.length === 0 && !loading ? (
+              <Text style={styles.emptyText}>No users found.</Text>
+            ) : null}
             {users.map((u) => (
               <View key={u.id} style={styles.listCard}>
                 <Text style={styles.listTitle}>{u.fullName}</Text>
@@ -263,12 +351,16 @@ export default function AdminScreen() {
         />
         {openSection === "categories" && (
           <View style={styles.sectionBody}>
-            {categories.map((c: IncidentCategory) => (
+            {categories.length === 0 && !loading ? (
+              <Text style={styles.emptyText}>No report categories.</Text>
+            ) : null}
+            {categories.map((c) => (
               <View key={c.id} style={styles.categoryRow}>
                 <Text style={styles.listTitle}>{c.name}</Text>
                 <Switch
                   value={c.active}
-                  onValueChange={() => toggleCategory(c.id)}
+                  onValueChange={() => toggleCategory(c.id, c.active)}
+                  disabled={busy}
                   trackColor={{ false: "#767577", true: COLORS.navy }}
                   thumbColor={COLORS.white}
                 />
@@ -304,7 +396,7 @@ function SectionHeader({
   );
 }
 
-function ContactRow({ contact }: { contact: EmergencyContact }) {
+function ContactRow({ contact }: { contact: HelpContact }) {
   return (
     <View style={styles.listCard}>
       <Text style={styles.listTitle}>{contact.label}</Text>
@@ -331,6 +423,11 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 19,
     opacity: 0.85,
+  },
+  emptyText: {
+    color: COLORS.textMuted,
+    fontSize: 13,
+    marginBottom: 8,
   },
   sectionHeader: {
     backgroundColor: COLORS.cardAlt,

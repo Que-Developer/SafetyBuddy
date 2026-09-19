@@ -1,7 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  ActivityIndicator,
+  Alert,
   ScrollView,
   StyleSheet,
   Text,
@@ -13,12 +15,14 @@ import { useAuth } from "@/context/AuthContext";
 import { COLORS } from "@/constants/theme";
 import {
   INCIDENT_STATUS_FLOW,
-  RESPONDER_INCIDENTS,
-  RESPONDERS,
   STATUS_COLORS,
+  fetchEmergencyAlerts,
+  fetchResponders,
+  updateEmergencyAlert,
   type IncidentStatus,
+  type Responder,
   type ResponderIncident,
-} from "@/data/mockData";
+} from "@/services/campusApi";
 
 type FilterKey = "All" | IncidentStatus;
 
@@ -41,7 +45,9 @@ function StatCard({
 }
 
 function nextStatus(current: IncidentStatus): IncidentStatus {
-  if (current === "Resolved" || current === "False Alarm") return current;
+  if (current === "Resolved" || current === "False Alarm" || current === "Cancelled") {
+    return current;
+  }
   const idx = INCIDENT_STATUS_FLOW.indexOf(current);
   if (idx < 0 || idx >= 3) return "Resolved";
   return INCIDENT_STATUS_FLOW[idx + 1];
@@ -57,7 +63,9 @@ function AlertCard({
   onFalseAlarm: () => void;
 }) {
   const canAdvance =
-    alert.status !== "Resolved" && alert.status !== "False Alarm";
+    alert.status !== "Resolved" &&
+    alert.status !== "False Alarm" &&
+    alert.status !== "Cancelled";
 
   return (
     <View style={styles.alertCard}>
@@ -67,7 +75,7 @@ function AlertCard({
           <View
             style={[
               styles.tag,
-              { backgroundColor: STATUS_COLORS[alert.status] },
+              { backgroundColor: STATUS_COLORS[alert.status] ?? "#8A9BB3" },
             ]}
           >
             <Text style={styles.tagText}>{alert.status.toUpperCase()}</Text>
@@ -115,12 +123,35 @@ function AlertCard({
 
 export default function ResponderDashboard() {
   const { user, logout, isAdmin } = useAuth();
-  const [incidents, setIncidents] = useState(RESPONDER_INCIDENTS);
+  const [incidents, setIncidents] = useState<ResponderIncident[]>([]);
+  const [responders, setResponders] = useState<Responder[]>([]);
   const [filter, setFilter] = useState<FilterKey>("All");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const refresh = useCallback(async () => {
+    const [alerts, duty] = await Promise.all([
+      fetchEmergencyAlerts(),
+      fetchResponders(),
+    ]);
+    setIncidents(alerts);
+    setResponders(duty);
+  }, []);
+
+  useEffect(() => {
+    refresh()
+      .catch((e) =>
+        setError(e instanceof Error ? e.message : "Failed to load dashboard")
+      )
+      .finally(() => setLoading(false));
+  }, [refresh]);
 
   const stats = useMemo(() => {
     const active = incidents.filter(
-      (i) => i.status !== "Resolved" && i.status !== "False Alarm"
+      (i) =>
+        i.status !== "Resolved" &&
+        i.status !== "False Alarm" &&
+        i.status !== "Cancelled"
     ).length;
     const resolved = incidents.filter((i) => i.status === "Resolved").length;
     const falseAlarm = incidents.filter(
@@ -143,27 +174,39 @@ export default function ResponderDashboard() {
     "False Alarm",
   ];
 
-  const advance = (id: string) => {
-    setIncidents((prev) =>
-      prev.map((item) => {
-        if (item.id !== id) return item;
-        const status = nextStatus(item.status);
-        const assignedResponder =
-          status === "Responder Dispatched" &&
-          item.assignedResponder === "Unassigned"
-            ? user?.fullName ?? "Officer on duty"
-            : item.assignedResponder;
-        return { ...item, status, assignedResponder };
-      })
-    );
+  const advance = async (alert: ResponderIncident) => {
+    const status = nextStatus(alert.status);
+    const assignedResponder =
+      status === "Responder Dispatched" &&
+      alert.assignedResponder === "Unassigned"
+        ? user?.fullName ?? "Officer on duty"
+        : undefined;
+    try {
+      await updateEmergencyAlert(alert.emergencyAlertId, {
+        status,
+        assignedResponder,
+      });
+      await refresh();
+    } catch (e) {
+      Alert.alert(
+        "Update failed",
+        e instanceof Error ? e.message : "Could not advance status."
+      );
+    }
   };
 
-  const markFalse = (id: string) => {
-    setIncidents((prev) =>
-      prev.map((item) =>
-        item.id === id ? { ...item, status: "False Alarm" as const } : item
-      )
-    );
+  const markFalse = async (alert: ResponderIncident) => {
+    try {
+      await updateEmergencyAlert(alert.emergencyAlertId, {
+        status: "False Alarm",
+      });
+      await refresh();
+    } catch (e) {
+      Alert.alert(
+        "Update failed",
+        e instanceof Error ? e.message : "Could not mark false alarm."
+      );
+    }
   };
 
   return (
@@ -196,6 +239,15 @@ export default function ResponderDashboard() {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
+        {loading ? (
+          <ActivityIndicator color="#facc15" style={{ marginVertical: 24 }} />
+        ) : null}
+        {error ? (
+          <Text style={{ color: COLORS.responderMuted, paddingHorizontal: 20, marginBottom: 12 }}>
+            {error}
+          </Text>
+        ) : null}
+
         <View style={styles.statsRow}>
           <StatCard count={stats.active} label="Active" color="#ff3b3b" />
           <StatCard count={stats.resolved} label="Resolved" color="#4ade80" />
@@ -237,17 +289,40 @@ export default function ResponderDashboard() {
           })}
         </ScrollView>
 
+        {!loading && !error && filtered.length === 0 ? (
+          <Text
+            style={{
+              color: COLORS.responderMuted,
+              paddingHorizontal: 20,
+              marginBottom: 16,
+            }}
+          >
+            No alerts in this filter.
+          </Text>
+        ) : null}
+
         {filtered.map((alert) => (
           <AlertCard
             key={alert.id}
             alert={alert}
-            onAdvance={() => advance(alert.id)}
-            onFalseAlarm={() => markFalse(alert.id)}
+            onAdvance={() => advance(alert)}
+            onFalseAlarm={() => markFalse(alert)}
           />
         ))}
 
         <Text style={styles.sectionLabel}>RESPONDERS ON DUTY</Text>
-        {RESPONDERS.map((r) => (
+        {!loading && responders.length === 0 ? (
+          <Text
+            style={{
+              color: COLORS.responderMuted,
+              paddingHorizontal: 20,
+              marginBottom: 12,
+            }}
+          >
+            No responders listed.
+          </Text>
+        ) : null}
+        {responders.map((r) => (
           <View key={r.id} style={styles.responderCard}>
             <View style={{ flex: 1 }}>
               <Text style={styles.responderName}>{r.name}</Text>

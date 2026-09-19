@@ -1,7 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   Animated,
   ScrollView,
   StyleSheet,
@@ -12,7 +13,10 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ALERT_LEVEL_COLORS } from "@/constants/theme";
 import { useTheme } from "@/context/ThemeContext";
-import { SAFETY_ALERTS, type SafetyAlert } from "@/data/mockData";
+import {
+  fetchSafetyAlerts,
+  type SafetyAlert,
+} from "@/services/campusApi";
 
 function AlertCard({
   alert,
@@ -27,7 +31,12 @@ function AlertCard({
         <View
           style={[
             styles.levelBadge,
-            { backgroundColor: ALERT_LEVEL_COLORS[alert.alertLevel] },
+            {
+              backgroundColor:
+                ALERT_LEVEL_COLORS[
+                  alert.alertLevel as keyof typeof ALERT_LEVEL_COLORS
+                ] || colors.info,
+            },
           ]}
         >
           <Text style={styles.levelBadgeText}>{alert.alertLevel}</Text>
@@ -39,8 +48,8 @@ function AlertCard({
       <Text style={[styles.alertTitle, { color: colors.text }]}>
         {alert.title}
       </Text>
-      <Text style={[styles.metaText, { color: colors.textMuted }]} numberOfLines={1}>
-        {alert.affectedArea}
+      <Text style={[styles.metaText, { color: colors.textMuted }]} numberOfLines={2}>
+        {alert.affectedArea || alert.message}
       </Text>
     </View>
   );
@@ -50,6 +59,9 @@ export default function AlertsScreen() {
   const { colors } = useTheme();
   const slide = useRef(new Animated.Value(40)).current;
   const opacity = useRef(new Animated.Value(0)).current;
+  const [alerts, setAlerts] = useState<SafetyAlert[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     Animated.parallel([
@@ -66,6 +78,15 @@ export default function AlertsScreen() {
     ]).start();
   }, [slide, opacity]);
 
+  useEffect(() => {
+    fetchSafetyAlerts()
+      .then(setAlerts)
+      .catch((e) =>
+        setError(e instanceof Error ? e.message : "Failed to load alerts")
+      )
+      .finally(() => setLoading(false));
+  }, []);
+
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: colors.bg }]} edges={["bottom"]}>
       <Animated.View
@@ -75,7 +96,17 @@ export default function AlertsScreen() {
           contentContainerStyle={styles.scroll}
           showsVerticalScrollIndicator={false}
         >
-          {SAFETY_ALERTS.map((alert) => (
+          {loading ? (
+            <ActivityIndicator color={colors.navy} style={{ marginTop: 24 }} />
+          ) : null}
+          {error ? (
+            <Text style={{ color: colors.textMuted, marginBottom: 12 }}>{error}</Text>
+          ) : null}
+          {!loading && !error && alerts.length === 0 ? (
+            <Text style={{ color: colors.textMuted }}>No safety alerts in the database.</Text>
+          ) : null}
+
+          {alerts.map((alert) => (
             <AlertCard key={alert.id} alert={alert} colors={colors} />
           ))}
 

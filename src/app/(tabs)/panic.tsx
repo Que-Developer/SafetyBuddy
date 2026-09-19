@@ -1,54 +1,85 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import {
+  ActivityIndicator,
+  Linking,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { GritHelpButton } from "@/components/GritHelpButton";
 import { useTheme } from "@/context/ThemeContext";
+import {
+  createEmergencyAlert,
+  fetchHelpContacts,
+  type HelpContact,
+} from "@/services/campusApi";
 import { loadTrustedContacts, type TrustedContact } from "@/services/contacts";
 import { getSharedLocation, type SharedLocation } from "@/services/location";
 
+const FALLBACK_SECURITY: HelpContact = {
+  id: "fallback",
+  label: "Campus Security",
+  number: "+27 41 504 2000",
+};
+
+function dialNumber(number: string) {
+  const digits = number.replace(/\s/g, "");
+  return Linking.openURL(`tel:${digits}`);
+}
+
 /**
- * Panic tab stays IDLE until the student deliberately activates HELP.
- * This prevents accidental “calling security” when merely opening the tab.
+ * Panic tab: one press on HELP creates an emergency alert and dials campus security.
  */
 export default function PanicScreen() {
   const router = useRouter();
   const { colors } = useTheme();
-  const [phase, setPhase] = useState<"idle" | "counting" | "sent">("idle");
-  const [countdown, setCountdown] = useState(5);
+  const [phase, setPhase] = useState<"idle" | "calling">("idle");
   const [location, setLocation] = useState<SharedLocation | null>(null);
   const [contacts, setContacts] = useState<TrustedContact[]>([]);
+  const [security, setSecurity] = useState<HelpContact | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     getSharedLocation().then(setLocation);
     loadTrustedContacts().then(setContacts);
+    fetchHelpContacts()
+      .then((list) => {
+        const campus =
+          list.find((c) => c.label === "Campus Security") ?? list[0] ?? null;
+        setSecurity(campus);
+      })
+      .catch((e) =>
+        setError(e instanceof Error ? e.message : "Failed to load security number")
+      )
+      .finally(() => setLoading(false));
   }, []);
 
-  useEffect(() => {
-    if (phase !== "counting") return;
-    if (countdown <= 0) {
-      setPhase("sent");
-      return;
+  const securityContact = security ?? FALLBACK_SECURITY;
+
+  const callSecurity = async () => {
+    setPhase("calling");
+    try {
+      await createEmergencyAlert({
+        alertType: "Panic",
+        locationLabel: location?.label,
+      });
+    } catch {
+      /* still dial even if alert creation fails */
     }
-    const t = setTimeout(() => setCountdown((c) => c - 1), 1000);
-    return () => clearTimeout(t);
-  }, [phase, countdown]);
-
-  useEffect(() => {
-    if (phase !== "sent") return;
-    const t = setTimeout(() => router.replace("/panicCountdownAlert"), 3500);
-    return () => clearTimeout(t);
-  }, [phase, router]);
-
-  const startAlert = () => {
-    setCountdown(5);
-    setPhase("counting");
+    try {
+      await dialNumber(securityContact.number);
+    } catch {
+      /* dialer unavailable (e.g. web) — stay on calling screen */
+    }
   };
 
   const cancel = () => {
     setPhase("idle");
-    setCountdown(5);
     router.replace("/AlertCanceled");
   };
 
@@ -60,56 +91,21 @@ export default function PanicScreen() {
       >
         <Text style={[styles.title, { color: colors.text }]}>Panic alert</Text>
         <Text style={[styles.sub, { color: colors.textMuted }]}>
-          Hold the button for 3 seconds only if you need help. Nothing is sent
-          until you finish holding.
+          Press once to call campus security immediately. Your phone dialer will
+          open with {securityContact.number}.
         </Text>
+        {loading ? (
+          <ActivityIndicator color={colors.navy} style={{ marginTop: 16 }} />
+        ) : null}
+        {error ? (
+          <Text style={{ color: colors.textMuted, marginTop: 8 }}>{error}</Text>
+        ) : null}
         <View style={styles.center}>
-          <GritHelpButton onActivated={startAlert} />
+          <GritHelpButton onActivated={callSecurity} />
           <Text style={[styles.holdHint, { color: colors.textMuted }]}>
-            Hold for 3 seconds · release to cancel
+            Tap once · calls {securityContact.label}
           </Text>
         </View>
-      </SafeAreaView>
-    );
-  }
-
-  if (phase === "counting") {
-    return (
-      <SafeAreaView
-        style={[styles.safe, { backgroundColor: colors.bg }]}
-        edges={["top", "bottom"]}
-      >
-        <Text style={[styles.title, { color: colors.text }]}>
-          Sending help request
-        </Text>
-        <Text style={[styles.sub, { color: colors.textMuted }]}>
-          Emergency alert will be sent in {countdown} seconds. Tap cancel if
-          this was accidental.
-        </Text>
-
-        <View style={[styles.card, { backgroundColor: colors.card }]}>
-          <View style={styles.redCircle}>
-            <Ionicons name="alert" size={36} color="#FFF" />
-          </View>
-          <Text style={[styles.alertType, { color: colors.navy }]}>
-            HELP REQUEST
-          </Text>
-          <Text style={[styles.countdown, { color: colors.navy }]}>
-            {countdown}
-          </Text>
-          <Text style={[styles.loc, { color: colors.textMuted }]}>
-            Location: {location?.label ?? "Capturing…"}
-          </Text>
-        </View>
-
-        <TouchableOpacity
-          style={[styles.cancelBtn, { backgroundColor: colors.navy }]}
-          onPress={cancel}
-        >
-          <Text style={[styles.cancelText, { color: colors.bg }]}>
-            I'm safe — cancel alert
-          </Text>
-        </TouchableOpacity>
       </SafeAreaView>
     );
   }
@@ -119,29 +115,38 @@ export default function PanicScreen() {
       style={[styles.safe, { backgroundColor: colors.bg }]}
       edges={["top", "bottom"]}
     >
-      <Text style={[styles.title, { color: colors.text }]}>Help is on the way</Text>
+      <Text style={[styles.title, { color: colors.text }]}>Calling security</Text>
+      <Text style={[styles.sub, { color: colors.textMuted }]}>
+        Your device should be dialing campus security now. Stay on the line if
+        you can.
+      </Text>
+
       <View style={[styles.card, { backgroundColor: colors.card }]}>
-        <View style={styles.greenCircle}>
-          <Ionicons name="checkmark" size={36} color="#fff" />
+        <View style={styles.redCircle}>
+          <Ionicons name="call" size={36} color="#FFF" />
         </View>
-        <Text style={[styles.sentTitle, { color: colors.text }]}>
-          Help request sent
+        <Text style={[styles.alertType, { color: colors.navy }]}>
+          CAMPUS SECURITY
         </Text>
-        <Text style={[styles.sub, { color: colors.textMuted }]}>
-          Campus security and your trusted contacts were notified with your
-          location. No phone call was placed automatically.
+        <Text style={[styles.number, { color: colors.text }]}>
+          {securityContact.number}
+        </Text>
+        <Text style={[styles.loc, { color: colors.textMuted }]}>
+          Location: {location?.label ?? "Capturing…"}
         </Text>
       </View>
 
+      <TouchableOpacity
+        style={[styles.redialBtn, { backgroundColor: colors.accent }]}
+        onPress={callSecurity}
+      >
+        <Ionicons name="call" size={18} color={colors.bg} />
+        <Text style={[styles.redialText, { color: colors.bg }]}>
+          Call again
+        </Text>
+      </TouchableOpacity>
+
       <View style={{ flex: 1, marginTop: 12 }}>
-        <View style={[styles.contactRow, { backgroundColor: colors.card }]}>
-          <Text style={[styles.contactName, { color: colors.text }]}>
-            Campus Security
-          </Text>
-          <Text style={[styles.contactSub, { color: colors.textMuted }]}>
-            Alert notified — not auto-dialed
-          </Text>
-        </View>
         {contacts.slice(0, 3).map((c) => (
           <View
             key={c.id}
@@ -151,7 +156,7 @@ export default function PanicScreen() {
               {c.name}
             </Text>
             <Text style={[styles.contactSub, { color: colors.textMuted }]}>
-              via {c.preferredAlertMethod}
+              Trusted · {c.preferredAlertMethod}
             </Text>
           </View>
         ))}
@@ -190,19 +195,19 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginBottom: 14,
   },
-  greenCircle: {
-    backgroundColor: "#22C55E",
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+  alertType: { fontWeight: "800", letterSpacing: 1, fontSize: 13 },
+  number: { fontSize: 28, fontWeight: "900", marginVertical: 8 },
+  loc: { fontSize: 13, marginTop: 4 },
+  redialBtn: {
+    marginTop: 14,
+    borderRadius: 14,
+    padding: 14,
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 14,
+    gap: 8,
   },
-  alertType: { fontWeight: "800", letterSpacing: 1, fontSize: 13 },
-  countdown: { fontSize: 80, fontWeight: "900", marginVertical: 6 },
-  loc: { fontSize: 13, marginTop: 4 },
-  sentTitle: { fontSize: 20, fontWeight: "900", marginBottom: 8 },
+  redialText: { fontWeight: "800", fontSize: 15 },
   cancelBtn: {
     marginTop: "auto",
     marginBottom: 24,
