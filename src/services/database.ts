@@ -30,7 +30,7 @@ export async function loadAuthToken(): Promise<string | null> {
   return memoryToken;
 }
 
-async function api<T>(
+export async function api<T>(
   path: string,
   options?: RequestInit & { auth?: boolean }
 ): Promise<T> {
