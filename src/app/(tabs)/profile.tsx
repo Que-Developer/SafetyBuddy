@@ -22,7 +22,7 @@ import {
 
 export default function ProfileScreen() {
   const { user, logout } = useAuth();
-  const { colors } = useTheme();
+  const { colors, selectedTheme, setTheme } = useTheme();
   const [shareLocation, setShareLocation] = useState(true);
   const [anonReport, setAnonReport] = useState(true);
   const [campusAlerts, setCampusAlerts] = useState(true);
@@ -167,6 +167,34 @@ export default function ProfileScreen() {
         </View>
 
         <Text style={[styles.sectionTitle, { color: colors.navy }]}>
+          APPEARANCE
+        </Text>
+        <View style={[styles.toggleCard, { backgroundColor: colors.card }]}>
+          <View style={styles.toggleTextContainer}>
+            <View style={styles.themeTitleRow}>
+              <Ionicons
+                name={selectedTheme === "dark" ? "moon" : "sunny"}
+                size={18}
+                color={colors.navy}
+              />
+              <Text style={[styles.toggleTitle, { color: colors.text }]}>
+                {selectedTheme === "dark" ? "Navy night" : "Yellow day"}
+              </Text>
+            </View>
+            <Text style={[styles.toggleSubtitle, { color: colors.textMuted }]}>
+              Switch between yellow day and navy night theme
+            </Text>
+          </View>
+          <Switch
+            value={selectedTheme === "dark"}
+            onValueChange={(on) => setTheme(on ? "dark" : "yellow")}
+            trackColor={{ false: "#FFD24C", true: "#002B5B" }}
+            thumbColor={colors.white}
+            accessibilityLabel="Toggle yellow day and navy night theme"
+          />
+        </View>
+
+        <Text style={[styles.sectionTitle, { color: colors.navy }]}>
           PRIVACY & PERMISSIONS
         </Text>
         {(
@@ -294,6 +322,11 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   toggleTextContainer: { flex: 1, paddingRight: 10 },
+  themeTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
   toggleTitle: { fontSize: 14, fontWeight: "bold" },
   toggleSubtitle: { fontSize: 12, marginTop: 2 },
   linkCard: {
