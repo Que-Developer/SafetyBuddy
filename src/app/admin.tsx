@@ -1,8 +1,22 @@
-import { Ionicons } from "@expo/vector-icons";
-import { router } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
+import { CARD_SHADOW, COLORS } from "@/constants/theme";
+import { useTheme } from "@/context/ThemeContext";
 import {
-  ActivityIndicator,
+  CAMPUS_ZONES,
+  EMERGENCY_CONTACTS,
+  INCIDENT_CATEGORIES,
+  RESPONDERS,
+  SAFETY_ALERTS,
+  SAFETY_RESOURCES,
+  type CampusZone,
+  type EmergencyContact,
+  type IncidentCategory,
+  type SafetyResource,
+} from "@/data/mockData";
+import { listUsers, type AppUser } from "@/services/database";
+import { Ionicons } from "@expo/vector-icons";
+import { useEffect, useState } from "react";
+import {
+  Alert,
   ScrollView,
   StyleSheet,
   Switch,
@@ -12,595 +26,255 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { GlassPanel } from "@/components/GlassPanel";
-import { OpsReportsMap } from "@/components/OpsReportsMap";
-import { SafetyBuddyLogo } from "@/components/SafetyBuddyLogo";
-import { ThemeToggleButton } from "@/components/ThemeToggleButton";
-import { toast } from "@/components/toast";
-import { useTheme } from "@/context/ThemeContext";
-import { buildOpsMapMarkers } from "@/lib/opsMapMarkers";
-import {
-  createHelpContact,
-  createSafetyAlert,
-  createSafetyResource,
-  createSupportService,
-  fetchCampusZones,
-  fetchEmergencyAlerts,
-  fetchHelpContacts,
-  fetchIncidentReports,
-  fetchReportCategories,
-  fetchResponders,
-  fetchRolePrivileges,
-  fetchSafetyAlerts,
-  fetchSafetyResources,
-  fetchSupportServices,
-  setReportCategoryActive,
-  type CampusZone,
-  type HelpContact,
-  type IncidentReportRow,
-  type ReportCategory,
-  type Responder,
-  type ResponderIncident,
-  type RolePrivilege,
-  type SafetyAlert,
-  type SafetyResource,
-  type SupportService,
-} from "@/services/campusApi";
-import { listUsers, type AppUser } from "@/services/database";
 
 type SectionKey =
-  | "map"
   | "contacts"
   | "alerts"
   | "zones"
   | "resources"
-  | "services"
   | "responders"
   | "users"
-  | "categories"
-  | "privileges";
-
-const SECTIONS: { key: SectionKey; label: string }[] = [
-  { key: "map", label: "Map" },
-  { key: "contacts", label: "Contacts" },
-  { key: "alerts", label: "Alerts" },
-  { key: "zones", label: "Zones" },
-  { key: "resources", label: "Resources" },
-  { key: "services", label: "Support" },
-  { key: "responders", label: "Responders" },
-  { key: "users", label: "Users" },
-  { key: "categories", label: "Categories" },
-  { key: "privileges", label: "Roles" },
-];
+  | "categories";
 
 export default function AdminScreen() {
-  const { colors } = useTheme();
-  const [contacts, setContacts] = useState<HelpContact[]>([]);
-  const [zones, setZones] = useState<CampusZone[]>([]);
-  const [resources, setResources] = useState<SafetyResource[]>([]);
-  const [services, setServices] = useState<SupportService[]>([]);
-  const [privileges, setPrivileges] = useState<RolePrivilege[]>([]);
-  const [responders, setResponders] = useState<Responder[]>([]);
-  const [categories, setCategories] = useState<ReportCategory[]>([]);
+  const [contacts, setContacts] = useState(EMERGENCY_CONTACTS);
+  const [zones] = useState(CAMPUS_ZONES);
+  const [resources] = useState(SAFETY_RESOURCES);
+  const [categories, setCategories] = useState(INCIDENT_CATEGORIES);
   const [users, setUsers] = useState<AppUser[]>([]);
-  const [issuedAlerts, setIssuedAlerts] = useState<SafetyAlert[]>([]);
-  const [emergencyAlerts, setEmergencyAlerts] = useState<ResponderIncident[]>(
-    []
-  );
-  const [reports, setReports] = useState<IncidentReportRow[]>([]);
   const [newContactLabel, setNewContactLabel] = useState("");
   const [newContactNumber, setNewContactNumber] = useState("");
   const [newAlertTitle, setNewAlertTitle] = useState("");
-  const [newResourceTitle, setNewResourceTitle] = useState("");
-  const [newResourceSummary, setNewResourceSummary] = useState("");
-  const [newServiceTitle, setNewServiceTitle] = useState("");
-  const [newServiceDetail, setNewServiceDetail] = useState("");
-  const [newServiceAction, setNewServiceAction] = useState("");
-  const [openSection, setOpenSection] = useState<SectionKey>("map");
-  const [loading, setLoading] = useState(true);
-  const [busy, setBusy] = useState(false);
+  const [issuedAlerts, setIssuedAlerts] = useState(SAFETY_ALERTS);
+  const [openSection, setOpenSection] = useState<SectionKey>("contacts");
 
   useEffect(() => {
-    Promise.all([
-      fetchHelpContacts(),
-      fetchSafetyAlerts(),
-      fetchCampusZones(),
-      fetchSafetyResources(),
-      fetchSupportServices(),
-      fetchResponders(),
-      fetchReportCategories(),
-      fetchRolePrivileges().catch(() => [] as RolePrivilege[]),
-      listUsers().catch(() => [] as AppUser[]),
-      fetchEmergencyAlerts().catch(() => [] as ResponderIncident[]),
-      fetchIncidentReports().catch(() => [] as IncidentReportRow[]),
-    ])
-      .then(
-        ([c, alerts, z, res, svc, resp, cats, priv, u, emergencies, reps]) => {
-          setContacts(c);
-          setIssuedAlerts(alerts);
-          setZones(z);
-          setResources(res);
-          setServices(svc);
-          setResponders(resp);
-          setCategories(cats);
-          setPrivileges(priv);
-          setUsers(u);
-          setEmergencyAlerts(emergencies);
-          setReports(reps);
-        }
-      )
-      .catch(() => toast.error("Could not load"))
-      .finally(() => setLoading(false));
+    listUsers().then(setUsers).catch(() => setUsers([]));
   }, []);
 
-  const mapMarkers = useMemo(
-    () =>
-      buildOpsMapMarkers({
-        alerts: emergencyAlerts,
-        reports,
-        zones,
-      }),
-    [emergencyAlerts, reports, zones]
-  );
+  const toggleSection = (key: SectionKey) => {
+    setOpenSection((prev) => (prev === key ? prev : key));
+  };
 
-  const addContact = async () => {
+  const addContact = () => {
     if (!newContactLabel.trim() || !newContactNumber.trim()) {
-      toast.warning("Missing fields");
+      Alert.alert("Missing fields", "Enter a label and number (sample only).");
       return;
     }
-    setBusy(true);
-    try {
-      const contact = await createHelpContact({
-        label: newContactLabel.trim(),
-        number: newContactNumber.trim(),
-      });
-      setContacts((prev) => [...prev, contact]);
-      setNewContactLabel("");
-      setNewContactNumber("");
-      toast.success("Saved");
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed");
-    } finally {
-      setBusy(false);
-    }
+    const contact: EmergencyContact = {
+      id: `EC-${Date.now()}`,
+      label: newContactLabel.trim(),
+      number: newContactNumber.trim(),
+    };
+    setContacts((prev) => [...prev, contact]);
+    setNewContactLabel("");
+    setNewContactNumber("");
   };
 
-  const issueAlert = async () => {
+  const issueAlert = () => {
     if (!newAlertTitle.trim()) {
-      toast.warning("Enter a title");
+      Alert.alert("Missing title", "Enter an alert title (sample only).");
       return;
     }
-    setBusy(true);
-    try {
-      const alert = await createSafetyAlert({
+    setIssuedAlerts((prev) => [
+      {
+        id: `ALT-${Date.now()}`,
         title: newAlertTitle.trim(),
-        message: "Campus safety alert.",
+        message: "Admin-issued sample alert for demo purposes.",
         affectedArea: "Campus-wide",
-        recommendedAction: "Follow campus guidance.",
+        dateTime: new Date().toISOString().slice(0, 16).replace("T", " "),
+        recommendedAction: "Follow campus guidance and stay aware.",
         alertLevel: "Information",
-      });
-      setIssuedAlerts((prev) => [alert, ...prev]);
-      setNewAlertTitle("");
-      toast.success("Issued");
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed");
-    } finally {
-      setBusy(false);
-    }
+      },
+      ...prev,
+    ]);
+    setNewAlertTitle("");
+    Alert.alert("Alert issued", "Simulated safety alert published to students.");
   };
 
-  const toggleCategory = async (id: string, active: boolean) => {
-    setBusy(true);
-    try {
-      setCategories(await setReportCategoryActive(id, !active));
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed");
-    } finally {
-      setBusy(false);
-    }
+  const toggleCategory = (id: string) => {
+    setCategories((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, active: !c.active } : c))
+    );
   };
-
-  const addResource = async () => {
-    if (!newResourceTitle.trim() || !newResourceSummary.trim()) {
-      toast.warning("Title and summary required");
-      return;
-    }
-    setBusy(true);
-    try {
-      const resource = await createSafetyResource({
-        title: newResourceTitle.trim(),
-        summary: newResourceSummary.trim(),
-        body: newResourceSummary.trim(),
-      });
-      setResources((prev) => [...prev, resource]);
-      setNewResourceTitle("");
-      setNewResourceSummary("");
-      toast.success("Resource saved");
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed");
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const addService = async () => {
-    if (
-      !newServiceTitle.trim() ||
-      !newServiceDetail.trim() ||
-      !newServiceAction.trim()
-    ) {
-      toast.warning("All service fields required");
-      return;
-    }
-    setBusy(true);
-    try {
-      const service = await createSupportService({
-        title: newServiceTitle.trim(),
-        detail: newServiceDetail.trim(),
-        actionText: newServiceAction.trim(),
-      });
-      setServices((prev) => [...prev, service]);
-      setNewServiceTitle("");
-      setNewServiceDetail("");
-      setNewServiceAction("");
-      toast.success("Service saved");
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed");
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const inputStyle = [
-    styles.input,
-    {
-      backgroundColor: colors.input,
-      color: colors.text,
-      borderColor: colors.tileBorder,
-    },
-  ];
-
+ const { colors } = useTheme();
   return (
-    <SafeAreaView
-      style={[styles.safe, { backgroundColor: colors.bg }]}
-      edges={["top", "bottom"]}
-    >
-      <View style={styles.top}>
-        <View style={styles.topRow}>
-          <View style={{ flex: 1 }}>
-            <SafetyBuddyLogo size="xs" style={styles.logo} />
-            <Text style={[styles.heading, { color: colors.text }]}>Admin</Text>
-            <Text style={[styles.sub, { color: colors.textMuted }]}>
-              Campus data · reports map · roles
-            </Text>
-          </View>
-          <ThemeToggleButton size="sm" />
-          <TouchableOpacity
-            onPress={() => router.back()}
-            style={[styles.backBtn, { backgroundColor: colors.card }]}
-          >
-            <Ionicons name="arrow-back" size={18} color={colors.navy} />
-          </TouchableOpacity>
-        </View>
-      </View>
-
+  <SafeAreaView style={[styles.safe, { backgroundColor: colors.bg }]}>
+       
       <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.navRow}
-        style={styles.navScroll}
-      >
-        {SECTIONS.map((s) => {
-          const on = openSection === s.key;
-          return (
-            <TouchableOpacity
-              key={s.key}
-              onPress={() => setOpenSection(s.key)}
-              style={[
-                styles.navItem,
-                { backgroundColor: on ? colors.navy : colors.card },
-              ]}
-            >
-              <Text
-                style={[
-                  styles.navLabel,
-                  { color: on ? colors.bg : colors.text },
-                ]}
-              >
-                {s.label}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
-
-      <ScrollView
-        contentContainerStyle={styles.body}
+        contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {loading ? (
-          <ActivityIndicator color={colors.navy} style={{ marginTop: 24 }} />
-        ) : null}
+        <View style={styles.banner}>
+          <Ionicons name="construct-outline" size={20} color={COLORS.navy} />
+          <Text style={styles.bannerText}>
+            Admin Content Manager (FR11) — mock interface with dummy data for
+            emergency contacts, alerts, zones, resources, responders, and
+            categories.
+          </Text>
+        </View>
 
-        {openSection === "map" && (
-          <View>
-            <Text style={[styles.section, { color: colors.navy }]}>
-              WHERE REPORTS COME FROM
-            </Text>
-            <Text style={[styles.mapHint, { color: colors.textMuted }]}>
-              ! panic alerts · R student safety reports
-            </Text>
-            <GlassPanel radius={16} style={styles.mapCard}>
-              <OpsReportsMap markers={mapMarkers} height={260} />
-            </GlassPanel>
-            <GlassPanel radius={14} style={styles.statCard}>
-              <Text style={[styles.statText, { color: colors.text }]}>
-                {mapMarkers.length} locations on map · {emergencyAlerts.length}{" "}
-                panics · {reports.length} reports
-              </Text>
-            </GlassPanel>
-            {reports.slice(0, 6).map((r) => (
-              <GlassPanel key={r.id} radius={14} style={styles.itemCard}>
-                <Text style={[styles.itemTitle, { color: colors.text }]}>
-                  {r.reportType}
-                </Text>
-                <Text style={[styles.itemMeta, { color: colors.textMuted }]}>
-                  {r.location} · {r.status}
-                </Text>
-              </GlassPanel>
-            ))}
-          </View>
-        )}
-
+        <SectionHeader
+          title="Emergency Contact Numbers"
+          open={openSection === "contacts"}
+          onPress={() => toggleSection("contacts")}
+        />
         {openSection === "contacts" && (
-          <View>
+          <View style={styles.sectionBody}>
             {contacts.map((c) => (
-              <GlassPanel key={c.id} radius={14} style={styles.itemCard}>
-                <Text style={[styles.itemTitle, { color: colors.text }]}>
-                  {c.label}
-                </Text>
-                <Text style={[styles.itemMeta, { color: colors.textMuted }]}>
-                  {c.number}
-                </Text>
-              </GlassPanel>
+              <ContactRow key={c.id} contact={c} />
             ))}
-            <View style={styles.form}>
-              <TextInput
-                style={inputStyle}
-                placeholder="Label"
-                placeholderTextColor={colors.textDim}
-                value={newContactLabel}
-                onChangeText={setNewContactLabel}
-              />
-              <TextInput
-                style={inputStyle}
-                placeholder="Phone"
-                placeholderTextColor={colors.textDim}
-                keyboardType="phone-pad"
-                value={newContactNumber}
-                onChangeText={setNewContactNumber}
-              />
-              <TouchableOpacity
-                style={[styles.btn, { backgroundColor: colors.navy }]}
-                onPress={addContact}
-                disabled={busy}
-              >
-                <Text style={[styles.btnText, { color: colors.bg }]}>Add</Text>
-              </TouchableOpacity>
-            </View>
+            <TextInput
+              style={styles.input}
+              placeholder="Contact label (sample)"
+              placeholderTextColor="#888"
+              value={newContactLabel}
+              onChangeText={setNewContactLabel}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Phone number (sample)"
+              placeholderTextColor="#888"
+              keyboardType="phone-pad"
+              value={newContactNumber}
+              onChangeText={setNewContactNumber}
+            />
+            <TouchableOpacity style={styles.actionBtn} onPress={addContact}>
+              <Text style={styles.actionBtnText}>Add / Edit Contact</Text>
+            </TouchableOpacity>
           </View>
         )}
 
+        <SectionHeader
+          title="Issue Safety Alerts"
+          open={openSection === "alerts"}
+          onPress={() => toggleSection("alerts")}
+        />
         {openSection === "alerts" && (
-          <View>
-            {issuedAlerts.slice(0, 8).map((a) => (
-              <GlassPanel key={a.id} radius={14} style={styles.itemCard}>
-                <Text style={[styles.itemTitle, { color: colors.text }]}>
-                  {a.title}
-                </Text>
-                <Text style={[styles.itemMeta, { color: colors.textMuted }]}>
+          <View style={styles.sectionBody}>
+            {issuedAlerts.slice(0, 3).map((a) => (
+              <View key={a.id} style={styles.listCard}>
+                <Text style={styles.listTitle}>{a.title}</Text>
+                <Text style={styles.listMeta}>
                   {a.alertLevel} · {a.affectedArea}
                 </Text>
-              </GlassPanel>
+              </View>
             ))}
-            <View style={styles.form}>
-              <TextInput
-                style={inputStyle}
-                placeholder="Title"
-                placeholderTextColor={colors.textDim}
-                value={newAlertTitle}
-                onChangeText={setNewAlertTitle}
-              />
-              <TouchableOpacity
-                style={[styles.btn, { backgroundColor: colors.navy }]}
-                onPress={issueAlert}
-                disabled={busy}
-              >
-                <Text style={[styles.btnText, { color: colors.bg }]}>
-                  Issue alert
-                </Text>
-              </TouchableOpacity>
-            </View>
+            <TextInput
+              style={styles.input}
+              placeholder="New alert title (sample)"
+              placeholderTextColor="#888"
+              value={newAlertTitle}
+              onChangeText={setNewAlertTitle}
+            />
+            <TouchableOpacity style={styles.actionBtn} onPress={issueAlert}>
+              <Text style={styles.actionBtnText}>Broadcast Sample Alert</Text>
+            </TouchableOpacity>
           </View>
         )}
 
+        <SectionHeader
+          title="Campus Zones"
+          open={openSection === "zones"}
+          onPress={() => toggleSection("zones")}
+        />
         {openSection === "zones" && (
-          <View>
-            {zones.map((z) => (
-              <GlassPanel key={z.id} radius={14} style={styles.itemCard}>
-                <Text style={[styles.itemTitle, { color: colors.text }]}>
-                  {z.name}
+          <View style={styles.sectionBody}>
+            {zones.map((z: CampusZone) => (
+              <View key={z.id} style={styles.listCard}>
+                <Text style={styles.listTitle}>{z.name}</Text>
+                <Text style={styles.listMeta}>{z.description}</Text>
+                <Text style={styles.listId}>
+                  Risk: {z.riskStatus} · Help: {z.nearestHelpPoint} · {z.mapReference}
                 </Text>
-                <Text style={[styles.itemMeta, { color: colors.textMuted }]}>
-                  {z.riskStatus} · {z.nearestHelpPoint}
-                </Text>
-              </GlassPanel>
+              </View>
             ))}
           </View>
         )}
 
+        <SectionHeader
+          title="Safety Resources / Guidance"
+          open={openSection === "resources"}
+          onPress={() => toggleSection("resources")}
+        />
         {openSection === "resources" && (
-          <View>
-            {resources.map((r) => (
-              <GlassPanel key={r.id} radius={14} style={styles.itemCard}>
-                <Text style={[styles.itemTitle, { color: colors.text }]}>
-                  {r.title}
-                </Text>
-                <Text style={[styles.itemMeta, { color: colors.textMuted }]}>
-                  {r.summary}
-                </Text>
-              </GlassPanel>
+          <View style={styles.sectionBody}>
+            {resources.map((r: SafetyResource) => (
+              <View key={r.id} style={styles.listCard}>
+                <Text style={styles.listTitle}>{r.title}</Text>
+                <Text style={styles.listMeta}>{r.summary}</Text>
+              </View>
             ))}
-            <View style={styles.form}>
-              <TextInput
-                style={inputStyle}
-                placeholder="Resource title"
-                placeholderTextColor={colors.textDim}
-                value={newResourceTitle}
-                onChangeText={setNewResourceTitle}
-              />
-              <TextInput
-                style={inputStyle}
-                placeholder="Summary"
-                placeholderTextColor={colors.textDim}
-                value={newResourceSummary}
-                onChangeText={setNewResourceSummary}
-              />
-              <TouchableOpacity
-                style={[styles.btn, { backgroundColor: colors.navy }]}
-                onPress={addResource}
-                disabled={busy}
-              >
-                <Text style={[styles.btnText, { color: colors.bg }]}>
-                  Add resource
-                </Text>
-              </TouchableOpacity>
-            </View>
+            <TouchableOpacity
+              style={styles.actionBtn}
+              onPress={() =>
+                Alert.alert(
+                  "Upload (concept)",
+                  "File upload is a UI placeholder in this prototype."
+                )
+              }
+            >
+              <Text style={styles.actionBtnText}>Upload Resource (UI only)</Text>
+            </TouchableOpacity>
           </View>
         )}
 
-        {openSection === "services" && (
-          <View>
-            {services.map((s) => (
-              <GlassPanel key={s.id} radius={14} style={styles.itemCard}>
-                <Text style={[styles.itemTitle, { color: colors.text }]}>
-                  {s.title}
-                </Text>
-                <Text style={[styles.itemMeta, { color: colors.textMuted }]}>
-                  {s.detail} · {s.action}
-                </Text>
-              </GlassPanel>
-            ))}
-            <View style={styles.form}>
-              <TextInput
-                style={inputStyle}
-                placeholder="Service title"
-                placeholderTextColor={colors.textDim}
-                value={newServiceTitle}
-                onChangeText={setNewServiceTitle}
-              />
-              <TextInput
-                style={inputStyle}
-                placeholder="Detail"
-                placeholderTextColor={colors.textDim}
-                value={newServiceDetail}
-                onChangeText={setNewServiceDetail}
-              />
-              <TextInput
-                style={inputStyle}
-                placeholder="Action text"
-                placeholderTextColor={colors.textDim}
-                value={newServiceAction}
-                onChangeText={setNewServiceAction}
-              />
-              <TouchableOpacity
-                style={[styles.btn, { backgroundColor: colors.navy }]}
-                onPress={addService}
-                disabled={busy}
-              >
-                <Text style={[styles.btnText, { color: colors.bg }]}>
-                  Add service
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
-
+        <SectionHeader
+          title="Manage Responder Accounts"
+          open={openSection === "responders"}
+          onPress={() => toggleSection("responders")}
+        />
         {openSection === "responders" && (
-          <View>
-            {responders.map((r) => (
-              <GlassPanel key={r.id} radius={14} style={styles.itemCard}>
-                <Text style={[styles.itemTitle, { color: colors.text }]}>
-                  {r.name}
+          <View style={styles.sectionBody}>
+            {RESPONDERS.map((r) => (
+              <View key={r.id} style={styles.listCard}>
+                <Text style={styles.listTitle}>{r.name}</Text>
+                <Text style={styles.listMeta}>
+                  {r.role} · {r.availability} · {r.contact}
                 </Text>
-                <Text style={[styles.itemMeta, { color: colors.textMuted }]}>
-                  {r.role} · {r.availability}
-                </Text>
-              </GlassPanel>
+                <Text style={styles.listId}>Responder ID: {r.id}</Text>
+              </View>
             ))}
           </View>
         )}
 
+        <SectionHeader
+          title="User accounts (SQL Server)"
+          open={openSection === "users"}
+          onPress={() => toggleSection("users")}
+        />
         {openSection === "users" && (
-          <View>
+          <View style={styles.sectionBody}>
             {users.map((u) => (
-              <GlassPanel key={u.id} radius={14} style={styles.itemCard}>
-                <Text style={[styles.itemTitle, { color: colors.text }]}>
-                  {u.fullName}
-                </Text>
-                <Text style={[styles.itemMeta, { color: colors.textMuted }]}>
+              <View key={u.id} style={styles.listCard}>
+                <Text style={styles.listTitle}>{u.fullName}</Text>
+                <Text style={styles.listMeta}>
                   {u.email} · {u.role}
                 </Text>
-              </GlassPanel>
+                <Text style={styles.listId}>User ID: {u.id}</Text>
+              </View>
             ))}
           </View>
         )}
 
+        <SectionHeader
+          title="Incident Categories"
+          open={openSection === "categories"}
+          onPress={() => toggleSection("categories")}
+        />
         {openSection === "categories" && (
-          <View>
-            {categories.map((c) => (
-              <GlassPanel key={c.id} radius={14} style={styles.itemCard}>
-                <View style={styles.itemRow}>
-                  <Text
-                    style={[styles.itemTitle, { color: colors.text, flex: 1 }]}
-                  >
-                    {c.name}
-                  </Text>
-                  <Switch
-                    value={c.active}
-                    onValueChange={() => toggleCategory(c.id, c.active)}
-                    disabled={busy}
-                    trackColor={{ false: colors.textDim, true: colors.navy }}
-                    thumbColor={colors.white}
-                  />
-                </View>
-              </GlassPanel>
-            ))}
-          </View>
-        )}
-
-        {openSection === "privileges" && (
-          <View>
-            {privileges.map((p, idx) => (
-              <GlassPanel
-                key={`${p.role}-${p.resource}-${idx}`}
-                radius={14}
-                style={styles.itemCard}
-              >
-                <Text style={[styles.itemTitle, { color: colors.text }]}>
-                  {p.role} · {p.resource}
-                </Text>
-                <Text style={[styles.itemMeta, { color: colors.textMuted }]}>
-                  {[
-                    p.create ? "C" : "-",
-                    p.read ? "R" : "-",
-                    p.update ? "U" : "-",
-                    p.delete ? "D" : "-",
-                  ].join(" ")}
-                  {p.scope ? ` · ${p.scope}` : ""}
-                </Text>
-              </GlassPanel>
+          <View style={styles.sectionBody}>
+            {categories.map((c: IncidentCategory) => (
+              <View key={c.id} style={styles.categoryRow}>
+                <Text style={styles.listTitle}>{c.name}</Text>
+                <Switch
+                  value={c.active}
+                  onValueChange={() => toggleCategory(c.id)}
+                  trackColor={{ false: "#767577", true: COLORS.navy }}
+                  thumbColor={COLORS.white}
+                />
+              </View>
             ))}
           </View>
         )}
@@ -611,61 +285,116 @@ export default function AdminScreen() {
   );
 }
 
+function SectionHeader({
+  title,
+  open,
+  onPress,
+}: {
+  title: string;
+  open: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <TouchableOpacity style={styles.sectionHeader} onPress={onPress}>
+      <Text style={styles.sectionTitle}>{title}</Text>
+      <Ionicons
+        name={open ? "chevron-up" : "chevron-down"}
+        size={18}
+        color={COLORS.navy}
+      />
+    </TouchableOpacity>
+  );
+}
+
+function ContactRow({ contact }: { contact: EmergencyContact }) {
+  return (
+    <View style={styles.listCard}>
+      <Text style={styles.listTitle}>{contact.label}</Text>
+      <Text style={styles.listMeta}>{contact.number}</Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  safe: { flex: 1 },
-  top: { paddingHorizontal: 18, paddingTop: 8, paddingBottom: 10 },
-  topRow: { flexDirection: "row", alignItems: "flex-start", gap: 10 },
-  logo: { alignSelf: "flex-start", marginBottom: 6 },
-  heading: { fontSize: 22, fontWeight: "800" },
-  sub: { fontSize: 13, marginTop: 2 },
-  backBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+  safe: { flex: 1, backgroundColor: COLORS.bg },
+  scroll: { padding: 18 },
+  banner: {
+    flexDirection: "row",
+    gap: 10,
+    backgroundColor: COLORS.card,
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 16,
+    ...CARD_SHADOW,
+  },
+  bannerText: {
+    flex: 1,
+    color: COLORS.text,
+    fontSize: 13,
+    lineHeight: 19,
+    opacity: 0.85,
+  },
+  sectionHeader: {
+    backgroundColor: COLORS.cardAlt,
+    borderRadius: 12,
+    padding: 14,
+    flexDirection: "row",
+    justifyContent: "space-between",
     alignItems: "center",
-    justifyContent: "center",
+    marginBottom: 8,
+    ...CARD_SHADOW,
   },
-  navScroll: { maxHeight: 52 },
-  navRow: {
-    paddingHorizontal: 14,
-    gap: 8,
-    alignItems: "center",
-    paddingBottom: 8,
-  },
-  navItem: {
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    borderRadius: 999,
-  },
-  navLabel: { fontSize: 13, fontWeight: "700" },
-  body: { paddingHorizontal: 16, paddingTop: 8 },
-  section: {
-    fontSize: 12,
+  sectionTitle: {
+    color: COLORS.text,
     fontWeight: "800",
-    letterSpacing: 0.7,
+    fontSize: 15,
+    flex: 1,
+    paddingRight: 8,
+  },
+  sectionBody: {
+    marginBottom: 14,
+  },
+  listCard: {
+    backgroundColor: COLORS.white,
+    borderRadius: 12,
+    padding: 12,
     marginBottom: 8,
   },
-  mapHint: { fontSize: 12, marginBottom: 8 },
-  mapCard: { marginBottom: 10, overflow: "hidden" },
-  statCard: { padding: 14, marginBottom: 12 },
-  statText: { fontWeight: "700", fontSize: 13 },
-  itemCard: { padding: 14, marginBottom: 10 },
-  itemRow: { flexDirection: "row", alignItems: "center", gap: 12 },
-  itemTitle: { fontSize: 15, fontWeight: "800" },
-  itemMeta: { fontSize: 13, marginTop: 3, lineHeight: 18 },
-  form: { paddingTop: 8, gap: 8 },
-  input: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 15,
+  listTitle: { color: COLORS.text, fontWeight: "800", fontSize: 14 },
+  listMeta: {
+    color: COLORS.text,
+    opacity: 0.7,
+    fontSize: 12,
+    marginTop: 4,
+    lineHeight: 17,
   },
-  btn: {
-    paddingVertical: 14,
-    borderRadius: 14,
-    alignItems: "center",
+  listId: {
+    color: COLORS.textMuted,
+    fontSize: 11,
     marginTop: 4,
   },
-  btnText: { fontWeight: "800", fontSize: 14 },
+  input: {
+    backgroundColor: COLORS.white,
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 8,
+    color: COLORS.text,
+  },
+  actionBtn: {
+    backgroundColor: COLORS.navy,
+    borderRadius: 12,
+    padding: 14,
+    alignItems: "center",
+    marginBottom: 4,
+  },
+  actionBtnText: { color: COLORS.white, fontWeight: "800", fontSize: 14 },
+  categoryRow: {
+    backgroundColor: COLORS.white,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 8,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
 });
