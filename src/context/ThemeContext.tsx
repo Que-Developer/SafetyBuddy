@@ -16,6 +16,9 @@ const YELLOW_THEME = {
   link: '#0A7A6B',
   accent: '#000458',       // <-- Used for icons & highlights
   navy: '#000458',
+  tile: '#FFFFFF',
+  tileBorder: 'rgba(0,4,88,0.1)',
+  bgDeep: '#000458',
 };
 
 const DARK_THEME = {
@@ -29,6 +32,9 @@ const DARK_THEME = {
   input: '#2A3A55',
   accent: '#4ade80',       // Green highlight in dark mode (readable on navy)
   navy: '#4ade80',
+  tile: '#23304a',
+  tileBorder: 'rgba(255,255,255,0.1)',
+  bgDeep: '#1a2332',
 };
 
 
