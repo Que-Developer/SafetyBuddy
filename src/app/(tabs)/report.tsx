@@ -319,7 +319,7 @@ export default function ReportScreen() {
             style={[styles.submitBtn, { backgroundColor: colors.accent }]}
             onPress={() => router.push("/report-success")}
           >
-            <Text style={[styles.submitText, { color: colors.bgDeep }]}>
+            <Text style={[styles.submitText, { color: colors.white }]}>
               Submit safety concern
             </Text>
           </TouchableOpacity>
