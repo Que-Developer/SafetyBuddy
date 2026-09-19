@@ -1,14 +1,18 @@
-import { router } from "expo-router";
-import { useEffect, useState } from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { COLORS } from "@/constants/theme";
+
+import GlassPanel from "@/components/GlassPanel";
+import { toast } from "@/components/toast";
+import { useTheme } from "@/context/ThemeContext";
 import {
   loadRole,
   ROLE_LABELS,
   saveRole,
   type AppRole,
 } from "@/services/role";
+import { Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
+import { useEffect, useState } from "react";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 const ROLES: AppRole[] = [
   "student",
@@ -17,7 +21,15 @@ const ROLES: AppRole[] = [
   "administrator",
 ];
 
+const ROLE_ICONS: Record<AppRole, keyof typeof Ionicons.glyphMap> = {
+  student: "school-outline",
+  campus_security: "shield-outline",
+  student_support: "heart-outline",
+  administrator: "settings-outline",
+};
+
 export default function RoleSelectScreen() {
+  const { colors } = useTheme();
   const [role, setRole] = useState<AppRole>("student");
 
   useEffect(() => {
@@ -27,6 +39,7 @@ export default function RoleSelectScreen() {
   const choose = async (next: AppRole) => {
     setRole(next);
     await saveRole(next);
+    toast.success(ROLE_LABELS[next]);
     if (next === "campus_security") {
       router.replace("/ResponderDashboard");
     } else if (next === "administrator") {
@@ -34,28 +47,51 @@ export default function RoleSelectScreen() {
     } else if (next === "student_support") {
       router.replace("/support");
     } else {
-      router.replace("/(tabs)/home");
+      router.replace("/(tabs)/panic");
     }
   };
 
   return (
-    <SafeAreaView style={styles.safe} edges={["bottom"]}>
+    <SafeAreaView
+      style={[styles.safe, { backgroundColor: colors.bg }]}
+      edges={["bottom"]}
+    >
       <View style={styles.content}>
-        <Text style={styles.title}>Choose demo role</Text>
-        <Text style={styles.sub}>
-          Demonstration only. In production, roles are assigned through official
-          university authentication — not self-selected.
-        </Text>
+        <Text style={[styles.title, { color: colors.text }]}>Role</Text>
 
         {ROLES.map((r) => (
-          <TouchableOpacity
+          <GlassPanel
             key={r}
-            style={[styles.card, role === r && styles.cardOn]}
-            onPress={() => choose(r)}
+            radius={14}
+            style={[
+              styles.card,
+              role === r ? { borderColor: colors.accent, borderWidth: 1.5 } : null,
+            ]}
           >
-            <Text style={styles.cardText}>{ROLE_LABELS[r]}</Text>
-            <Text style={styles.cardHint}>Sample account · {r}</Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.cardInner}
+              onPress={() => choose(r)}
+              activeOpacity={0.85}
+            >
+              <View style={styles.iconWrap}>
+                <Ionicons
+                  name={ROLE_ICONS[r]}
+                  size={20}
+                  color={colors.navy}
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.cardText, { color: colors.text }]}>
+                  {ROLE_LABELS[r]}
+                </Text>
+              </View>
+              <Ionicons
+                name="chevron-forward-outline"
+                size={18}
+                color={colors.textMuted}
+              />
+            </TouchableOpacity>
+          </GlassPanel>
         ))}
       </View>
     </SafeAreaView>
@@ -63,19 +99,23 @@ export default function RoleSelectScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: COLORS.bg },
+  safe: { flex: 1 },
   content: { flex: 1, padding: 20 },
-  title: { color: COLORS.white, fontSize: 24, fontWeight: "900", marginBottom: 8 },
-  sub: { color: COLORS.textMuted, fontSize: 14, lineHeight: 20, marginBottom: 18 },
-  card: {
-    backgroundColor: COLORS.card,
-    borderRadius: 14,
+  title: { fontSize: 24, fontWeight: "900", marginBottom: 16 },
+  card: { marginBottom: 10 },
+  cardInner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
     padding: 16,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: "transparent",
   },
-  cardOn: { borderColor: COLORS.accent },
-  cardText: { color: COLORS.white, fontWeight: "800", fontSize: 16 },
-  cardHint: { color: COLORS.textMuted, fontSize: 12, marginTop: 4 },
+  iconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(255,255,255,0.45)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  cardText: { fontWeight: "800", fontSize: 16 },
 });
