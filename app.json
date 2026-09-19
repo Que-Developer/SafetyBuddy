@@ -7,11 +7,6 @@
     "icon": "./assets/images/icon.png",
     "scheme": "safetybuddy",
     "userInterfaceStyle": "automatic",
-    "androidStatusBar": {
-      "barStyle": "dark-content",
-      "backgroundColor": "#FFD24C",
-      "translucent": false
-    },
     "ios": {
       "icon": "./assets/expo.icon"
     },

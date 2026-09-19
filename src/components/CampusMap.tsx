@@ -3,6 +3,7 @@ import { Platform, StyleSheet, View } from "react-native";
 import { WebView, type WebViewMessageEvent } from "react-native-webview";
 import {
   CAMPUS_CENTER,
+  MAP_LAYER_POINTS,
   type MapLayerKey,
   type MapPoint,
 } from "@/data/mapData";
@@ -11,19 +12,10 @@ export type MapCommand =
   | { type: "setMode"; mode: "2d" | "3d" }
   | { type: "setLayers"; layers: MapLayerKey[] }
   | { type: "setPickMode"; pick: "start" | "end" | null }
-  | {
-      type: "setRoute";
-      start: { lat: number; lng: number } | null;
-      end: { lat: number; lng: number } | null;
-    }
+  | { type: "setRoute"; start: { lat: number; lng: number } | null; end: { lat: number; lng: number } | null }
   | { type: "simulate"; running: boolean }
   | { type: "flyTo"; lat: number; lng: number }
   | { type: "setBase"; base: "street" | "satellite" }
-  | {
-      type: "setView";
-      mode: "2d" | "3d";
-      base: "street" | "satellite";
-    }
   | { type: "setLiveLocation"; lat: number; lng: number; follow?: boolean };
 
 export type MapEvent =
@@ -36,8 +28,6 @@ export type MapEvent =
 type Props = {
   mode: "2d" | "3d";
   base?: "street" | "satellite";
-  viewRevision?: number;
-  layerPoints?: MapPoint[];
   activeLayers: MapLayerKey[];
   pickMode: "start" | "end" | null;
   start: { lat: number; lng: number } | null;
@@ -60,8 +50,7 @@ function buildHtml(points: MapPoint[]) {
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
   <style>
-    html, body { margin:0; padding:0; height:100%; width:100%; background:#FFD24C; overflow:hidden; position:relative; }
-    #map2d, #map3d { position:absolute; inset:0; height:100%; width:100%; }
+    html, body, #map2d, #map3d { margin:0; padding:0; height:100%; width:100%; background:#0b1b3a; }
     #map3d { display:none; }
     .badge {
       background:#002B5B; color:#fff; border-radius:999px; padding:4px 8px;
@@ -124,7 +113,6 @@ function buildHtml(points: MapPoint[]) {
       attribution: 'Tiles © Esri',
       maxZoom: 19
     });
-    // "Color" = vivid satellite imagery (visibly different from street)
     const satTiles = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
       attribution: 'Tiles © Esri',
       maxZoom: 19
@@ -216,7 +204,7 @@ function buildHtml(points: MapPoint[]) {
       post({ type: 'mapClick', lat: e.latlng.lat, lng: e.latlng.lng });
     });
 
-    // --- MapLibre 3D (colorful satellite imagery + pitch) ---
+    // --- MapLibre 3D ---
     let map3d = null;
     function ensure3d() {
       if (map3d) return map3d;
@@ -225,20 +213,19 @@ function buildHtml(points: MapPoint[]) {
         style: {
           version: 8,
           sources: {
-            sat: {
+            osm: {
               type: 'raster',
-              tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+              tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
               tileSize: 256,
-              attribution: 'Tiles © Esri'
+              attribution: '© OpenStreetMap'
             }
           },
-          layers: [{ id: 'sat', type: 'raster', source: 'sat' }]
+          layers: [{ id: 'osm', type: 'raster', source: 'osm' }]
         },
         center: [CENTER.lng, CENTER.lat],
         zoom: 16,
         pitch: 60,
-        bearing: -20,
-        maxPitch: 70
+        bearing: -20
       });
       map3d.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'top-right');
       map3d.on('click', (e) => {
@@ -287,53 +274,32 @@ function buildHtml(points: MapPoint[]) {
     }
 
     function setBase(next) {
-      baseMode = next || 'street';
-      try { streetTiles.remove(); } catch (e) {}
-      try { satTiles.remove(); } catch (e) {}
-      try { satLabels.remove(); } catch (e) {}
-      if (baseMode === 'satellite') {
+      baseMode = next;
+      map2d.removeLayer(streetTiles);
+      map2d.removeLayer(satTiles);
+      map2d.removeLayer(satLabels);
+      if (next === 'satellite') {
         satTiles.addTo(map2d);
         satLabels.addTo(map2d);
       } else {
         streetTiles.addTo(map2d);
       }
-      try { map2d.invalidateSize(); } catch (e) {}
     }
 
     function setMode(next) {
-      mode = next || '2d';
+      mode = next;
       const d2 = document.getElementById('map2d');
       const d3 = document.getElementById('map3d');
-      if (!d2 || !d3) return;
-      if (mode === '3d') {
+      if (next === '3d') {
         d2.style.display = 'none';
         d3.style.display = 'block';
-        d3.style.position = 'absolute';
-        d3.style.inset = '0';
         const m = ensure3d();
-        setTimeout(function() {
-          try {
-            m.resize();
-            var c = map2d.getCenter();
-            var z = map2d.getZoom();
-            m.jumpTo({ center: [c.lng, c.lat], zoom: z, pitch: 65, bearing: -25 });
-            sync3dMarkers();
-            sync3dRoute();
-          } catch (e) {}
-        }, 80);
+        setTimeout(() => { m.resize(); sync3dMarkers(); sync3dRoute(); }, 80);
       } else {
         d3.style.display = 'none';
         d2.style.display = 'block';
-        setTimeout(function() {
-          try { map2d.invalidateSize(); } catch (e) {}
-        }, 80);
+        setTimeout(() => map2d.invalidateSize(), 80);
       }
-    }
-
-    function setView(nextMode, nextBase) {
-      // Base tiles while 2D exists, then show 2D or 3D container
-      setBase(nextBase || 'street');
-      setMode(nextMode || '2d');
     }
 
     function startSim() {
@@ -367,10 +333,6 @@ function buildHtml(points: MapPoint[]) {
 
     function handleCommand(cmd) {
       if (!cmd || !cmd.type) return;
-      if (cmd.type === 'setView') {
-        setView(cmd.mode, cmd.base);
-        return;
-      }
       if (cmd.type === 'setMode') setMode(cmd.mode);
       if (cmd.type === 'setBase') setBase(cmd.base || 'street');
       if (cmd.type === 'setLayers') { activeLayers = cmd.layers || []; refreshLayers(); sync3dMarkers(); }
@@ -394,13 +356,6 @@ function buildHtml(points: MapPoint[]) {
       }
     }
 
-    window.__sbMapCommand = function(raw) {
-      try {
-        var data = typeof raw === 'string' ? JSON.parse(raw) : raw;
-        handleCommand(data);
-      } catch (err) {}
-    };
-
     // RN bridge
     document.addEventListener('message', (e) => {
       try { handleCommand(JSON.parse(e.data)); } catch (err) {}
@@ -422,8 +377,6 @@ function buildHtml(points: MapPoint[]) {
 export function CampusMap({
   mode,
   base = "street",
-  viewRevision = 0,
-  layerPoints = [],
   activeLayers,
   pickMode,
   start,
@@ -435,13 +388,8 @@ export function CampusMap({
 }: Props) {
   const ref = useRef<WebView>(null);
   const ready = useRef(false);
-  const latest = useRef({ mode, base, activeLayers, pickMode, start, end, simulating, liveLocation, followLive });
-  latest.current = { mode, base, activeLayers, pickMode, start, end, simulating, liveLocation, followLive };
 
-  const html = useMemo(
-    () => buildHtml(layerPoints.length ? layerPoints : []),
-    [layerPoints]
-  );
+  const html = useMemo(() => buildHtml(MAP_LAYER_POINTS), []);
 
   const send = (cmd: MapCommand) => {
     const payload = JSON.stringify(cmd);
@@ -452,33 +400,18 @@ export function CampusMap({
       iframe?.contentWindow?.postMessage(payload, "*");
       return;
     }
-    // Pass JSON object literal into the WebView (more reliable than nested string)
-    const js = `(function(){try{if(window.__sbMapCommand){window.__sbMapCommand(${payload});}}catch(e){} return true;})();`;
-    ref.current?.injectJavaScript(js);
+    ref.current?.postMessage(payload);
   };
 
-  const pushFullState = () => {
-    const s = latest.current;
-    send({ type: "setView", mode: s.mode, base: s.base });
-    send({ type: "setLayers", layers: s.activeLayers });
-    send({ type: "setPickMode", pick: s.pickMode });
-    send({ type: "setRoute", start: s.start, end: s.end });
-    send({ type: "simulate", running: s.simulating });
-    if (s.liveLocation) {
-      send({
-        type: "setLiveLocation",
-        lat: s.liveLocation.lat,
-        lng: s.liveLocation.lng,
-        follow: s.followLive,
-      });
-    }
-  };
-
-  // Apply 2D / Color / 3D whenever mode, base, or revision changes
   useEffect(() => {
     if (!ready.current) return;
-    send({ type: "setView", mode, base });
-  }, [mode, base, viewRevision]);
+    send({ type: "setMode", mode });
+  }, [mode]);
+
+  useEffect(() => {
+    if (!ready.current) return;
+    send({ type: "setBase", base });
+  }, [base]);
 
   useEffect(() => {
     if (!ready.current) return;
@@ -515,7 +448,10 @@ export function CampusMap({
       const data = JSON.parse(event.nativeEvent.data) as MapEvent;
       if (data.type === "ready") {
         ready.current = true;
-        pushFullState();
+        send({ type: "setMode", mode });
+        send({ type: "setBase", base });
+        send({ type: "setLayers", layers: activeLayers });
+        send({ type: "setRoute", start, end });
       }
       onEvent(data);
     } catch {
@@ -533,7 +469,10 @@ export function CampusMap({
         if (!data?.type) return;
         if (data.type === "ready") {
           ready.current = true;
-          pushFullState();
+          send({ type: "setMode", mode });
+          send({ type: "setBase", base });
+          send({ type: "setLayers", layers: activeLayers });
+          send({ type: "setRoute", start, end });
         }
         onEvent(data as MapEvent);
       } catch {
@@ -542,7 +481,7 @@ export function CampusMap({
     };
     window.addEventListener("message", handler);
     return () => window.removeEventListener("message", handler);
-  }, [onEvent]);
+  }, [mode, base, activeLayers, start, end, onEvent]);
 
   if (Platform.OS === "web") {
     return (
@@ -565,34 +504,23 @@ export function CampusMap({
         originWhitelist={["*"]}
         source={{ html }}
         onMessage={onMessage}
-        onLoadEnd={() => {
-          // Fallback if ready message was missed
-          if (!ready.current) {
-            ready.current = true;
-            pushFullState();
-          } else {
-            send({ type: "setView", mode: latest.current.mode, base: latest.current.base });
-          }
-        }}
         style={styles.webview}
         javaScriptEnabled
         domStorageEnabled
         mixedContentMode="always"
         allowFileAccess
         setSupportMultipleWindows={false}
-        allowsInlineMediaPlayback
       />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: { flex: 1, overflow: "hidden", backgroundColor: "#FFD24C" },
+  wrap: { flex: 1, overflow: "hidden", backgroundColor: "#0b1b3a" },
   webview: { flex: 1, backgroundColor: "transparent" },
   iframe: {
     borderWidth: 0,
     width: "100%",
     height: "100%",
-    backgroundColor: "#FFD24C",
   },
 });

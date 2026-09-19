@@ -1,8 +1,6 @@
 import { Stack } from "expo-router";
-import * as SystemUI from "expo-system-ui";
 import { StatusBar } from "expo-status-bar";
-import { useEffect } from "react";
-import { LogBox, Platform, StatusBar as RNStatusBar } from "react-native";
+import { LogBox } from "react-native";
 import { AuthGate } from "@/components/AuthGate";
 import { AuthProvider } from "@/context/AuthContext";
 import { ThemeProvider, useTheme } from "@/context/ThemeContext";
@@ -18,26 +16,11 @@ function RootStack() {
     animation: "slide_from_bottom" as const,
   };
 
-  useEffect(() => {
-    SystemUI.setBackgroundColorAsync(colors.bg).catch(() => {});
-    if (Platform.OS === "android") {
-      RNStatusBar.setBackgroundColor(colors.bg);
-      RNStatusBar.setBarStyle(
-        mode === "navy" ? "light-content" : "dark-content"
-      );
-      RNStatusBar.setTranslucent(false);
-    }
-  }, [colors.bg, mode]);
-
   return (
     <>
-      <StatusBar style={mode === "navy" ? "light" : "dark"} hidden={false} />
+      <StatusBar style={mode === "navy" ? "light" : "dark"} />
       <AuthGate>
-        <Stack
-          screenOptions={{
-            contentStyle: { backgroundColor: colors.bg },
-          }}
-        >
+        <Stack>
           <Stack.Screen name="index" options={{ headerShown: false }} />
           <Stack.Screen name="splash" options={{ headerShown: false }} />
           <Stack.Screen name="theme-select" options={{ headerShown: false }} />

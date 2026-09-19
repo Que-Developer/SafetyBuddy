@@ -3,8 +3,6 @@ import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
   Animated,
   Image,
   ScrollView,
@@ -16,30 +14,25 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useTheme } from "@/context/ThemeContext";
+import { COLORS } from "@/constants/theme";
 import {
-  createIncidentReport,
-  fetchCampusZones,
-  fetchReportCategories,
-} from "@/services/campusApi";
+  CAMPUS_LOCATIONS,
+  REPORT_TYPES,
+  type ReportType,
+} from "@/data/mockData";
 
 const TOGGLE_OFF = "#C4C4C4";
+const TOGGLE_ON = COLORS.navy;
 
 export default function ReportScreen() {
-  const { colors } = useTheme();
-  const [reportTypes, setReportTypes] = useState<string[]>([]);
-  const [locations, setLocations] = useState<string[]>([]);
-  const [reportType, setReportType] = useState("");
-  const [location, setLocation] = useState("");
+  const [reportType, setReportType] = useState<ReportType>(REPORT_TYPES[0]);
+  const [location, setLocation] = useState(CAMPUS_LOCATIONS[0]);
   const [description, setDescription] = useState("");
   const [followUp, setFollowUp] = useState(true);
   const [anonymous, setAnonymous] = useState(true);
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [showTypes, setShowTypes] = useState(false);
   const [showLocations, setShowLocations] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const slide = useRef(new Animated.Value(48)).current;
   const opacity = useRef(new Animated.Value(0)).current;
 
@@ -49,22 +42,6 @@ export default function ReportScreen() {
       Animated.timing(opacity, { toValue: 1, duration: 260, useNativeDriver: true }),
     ]).start();
   }, [slide, opacity]);
-
-  useEffect(() => {
-    Promise.all([fetchReportCategories(), fetchCampusZones()])
-      .then(([categories, zones]) => {
-        const activeTypes = categories.filter((c) => c.active).map((c) => c.name);
-        const zoneNames = zones.map((z) => z.name);
-        setReportTypes(activeTypes);
-        setLocations(zoneNames);
-        if (activeTypes[0]) setReportType(activeTypes[0]);
-        if (zoneNames[0]) setLocation(zoneNames[0]);
-      })
-      .catch((e) =>
-        setError(e instanceof Error ? e.message : "Failed to load report form")
-      )
-      .finally(() => setLoading(false));
-  }, []);
 
   const reportId = useMemo(() => `RPT-${Date.now().toString().slice(-6)}`, []);
   const dateTime = useMemo(
@@ -101,327 +78,216 @@ export default function ReportScreen() {
     }
   };
 
-  const handleSubmit = async () => {
-    if (!reportType || !location) {
-      Alert.alert("Missing info", "Please select a report type and location.");
-      return;
-    }
-    if (!description.trim()) {
-      Alert.alert("Missing description", "Please describe what happened.");
-      return;
-    }
-    setSubmitting(true);
-    try {
-      await createIncidentReport({
-        reportType,
-        location,
-        description: description.trim(),
-        photoUri,
-        isAnonymous: anonymous,
-        followUpRequested: followUp,
-      });
-      router.push("/report-success");
-    } catch (e) {
-      Alert.alert(
-        "Submit failed",
-        e instanceof Error ? e.message : "Could not submit report."
-      );
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
   return (
-    <SafeAreaView
-      style={[styles.safe, { backgroundColor: colors.bg }]}
-      edges={["top", "bottom"]}
-    >
+    <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
       <Animated.View
         style={{ flex: 1, opacity, transform: [{ translateY: slide }] }}
       >
-        <ScrollView
-          contentContainerStyle={styles.scroll}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        <Text style={styles.heading}>Share a safety concern</Text>
+        <Text style={styles.subheading}>
+          Your report can help improve campus safety. Tell us what kind of help
+          you need — you can stay anonymous.
+        </Text>
+
+        <View style={styles.metaCard}>
+          <Text style={styles.metaLabel}>Report ID</Text>
+          <Text style={styles.metaValue}>{reportId}</Text>
+          <Text style={styles.metaLabel}>Date & Time</Text>
+          <Text style={styles.metaValue}>{dateTime}</Text>
+          <Text style={styles.metaLabel}>Status</Text>
+          <Text style={[styles.metaValue, { color: COLORS.accent }]}>
+            Draft → Submitted on send
+          </Text>
+        </View>
+
+        <Text style={styles.label}>Type of concern</Text>
+        <TouchableOpacity
+          style={styles.select}
+          onPress={() => {
+            setShowTypes((v) => !v);
+            setShowLocations(false);
+          }}
         >
-          <Text style={[styles.heading, { color: colors.text }]}>
-            Share a safety concern
-          </Text>
-          <Text style={[styles.subheading, { color: colors.textMuted }]}>
-            Your report can help improve campus safety. Tell us what kind of help
-            you need — you can stay anonymous.
-          </Text>
+          <Text style={styles.selectText}>{reportType}</Text>
+          <Ionicons name="chevron-down" size={18} color={COLORS.accent} />
+        </TouchableOpacity>
+        {showTypes && (
+          <View style={styles.dropdown}>
+            {REPORT_TYPES.map((type) => (
+              <TouchableOpacity
+                key={type}
+                style={styles.dropdownItem}
+                onPress={() => {
+                  setReportType(type);
+                  setShowTypes(false);
+                }}
+              >
+                <Text style={styles.dropdownText}>{type}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
 
-          {loading ? (
-            <ActivityIndicator color={colors.navy} style={{ marginBottom: 12 }} />
-          ) : null}
-          {error ? (
-            <Text style={{ color: colors.textMuted, marginBottom: 12 }}>{error}</Text>
-          ) : null}
+        <Text style={styles.label}>Location</Text>
+        <TouchableOpacity
+          style={styles.select}
+          onPress={() => {
+            setShowLocations((v) => !v);
+            setShowTypes(false);
+          }}
+        >
+          <Text style={styles.selectText}>{location}</Text>
+          <Ionicons name="location-outline" size={18} color={COLORS.accent} />
+        </TouchableOpacity>
+        {showLocations && (
+          <View style={styles.dropdown}>
+            {CAMPUS_LOCATIONS.map((loc) => (
+              <TouchableOpacity
+                key={loc}
+                style={styles.dropdownItem}
+                onPress={() => {
+                  setLocation(loc);
+                  setShowLocations(false);
+                }}
+              >
+                <Text style={styles.dropdownText}>{loc}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
 
-          <View style={[styles.metaCard, { backgroundColor: colors.card }]}>
-            <Text style={[styles.metaLabel, { color: colors.textDim }]}>
-              Report ID
-            </Text>
-            <Text style={[styles.metaValue, { color: colors.text }]}>
-              {reportId}
-            </Text>
-            <Text style={[styles.metaLabel, { color: colors.textDim }]}>
-              Date & Time
-            </Text>
-            <Text style={[styles.metaValue, { color: colors.text }]}>
-              {dateTime}
-            </Text>
-            <Text style={[styles.metaLabel, { color: colors.textDim }]}>
-              Status
-            </Text>
-            <Text style={[styles.metaValue, { color: colors.accent }]}>
-              Draft → Submitted on send
+        <Text style={styles.label}>Description</Text>
+        <TextInput
+          style={styles.textArea}
+          multiline
+          numberOfLines={5}
+          placeholder="Share what happened, in your own words…"
+          placeholderTextColor={COLORS.textDim}
+          value={description}
+          onChangeText={setDescription}
+        />
+
+        <Text style={styles.label}>Optional photo</Text>
+        {photoUri ? (
+          <View style={styles.photoPreviewWrap}>
+            <Image source={{ uri: photoUri }} style={styles.photoPreview} />
+            <View style={styles.photoActions}>
+              <TouchableOpacity style={styles.photoActionBtn} onPress={pickPhoto}>
+                <Text style={styles.photoActionText}>Change</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.photoActionBtn}
+                onPress={() => setPhotoUri(null)}
+              >
+                <Text style={styles.photoActionText}>Remove</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        ) : (
+          <View style={styles.photoBox}>
+            <Ionicons name="camera-outline" size={28} color={COLORS.accent} />
+            <Text style={styles.photoText}>Add a photo of the area or concern</Text>
+            <View style={styles.photoActions}>
+              <TouchableOpacity style={styles.photoActionBtn} onPress={takePhoto}>
+                <Ionicons name="camera" size={16} color={COLORS.navy} />
+                <Text style={styles.photoActionText}>Camera</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.photoActionBtn} onPress={pickPhoto}>
+                <Ionicons name="images-outline" size={16} color={COLORS.navy} />
+                <Text style={styles.photoActionText}>Gallery</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
+        <View style={styles.toggleCard}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.toggleTitle}>Request follow-up</Text>
+            <Text style={styles.toggleSub}>
+              Ask security to contact you about this report
             </Text>
           </View>
-
-          <Text style={[styles.label, { color: colors.accent }]}>
-            Type of concern
-          </Text>
-          <TouchableOpacity
-            style={[styles.select, { backgroundColor: colors.tile }]}
-            onPress={() => {
-              setShowTypes((v) => !v);
-              setShowLocations(false);
-            }}
-            disabled={reportTypes.length === 0}
-          >
-            <Text style={[styles.selectText, { color: colors.text }]}>
-              {reportType || "No types available"}
-            </Text>
-            <Ionicons name="chevron-down" size={18} color={colors.accent} />
-          </TouchableOpacity>
-          {showTypes && (
-            <View style={[styles.dropdown, { backgroundColor: colors.cardAlt }]}>
-              {reportTypes.map((type) => (
-                <TouchableOpacity
-                  key={type}
-                  style={[
-                    styles.dropdownItem,
-                    { borderBottomColor: colors.tileBorder },
-                  ]}
-                  onPress={() => {
-                    setReportType(type);
-                    setShowTypes(false);
-                  }}
-                >
-                  <Text style={[styles.dropdownText, { color: colors.text }]}>
-                    {type}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
-
-          <Text style={[styles.label, { color: colors.accent }]}>Location</Text>
-          <TouchableOpacity
-            style={[styles.select, { backgroundColor: colors.tile }]}
-            onPress={() => {
-              setShowLocations((v) => !v);
-              setShowTypes(false);
-            }}
-            disabled={locations.length === 0}
-          >
-            <Text style={[styles.selectText, { color: colors.text }]}>
-              {location || "No locations available"}
-            </Text>
-            <Ionicons name="location-outline" size={18} color={colors.accent} />
-          </TouchableOpacity>
-          {showLocations && (
-            <View style={[styles.dropdown, { backgroundColor: colors.cardAlt }]}>
-              {locations.map((loc) => (
-                <TouchableOpacity
-                  key={loc}
-                  style={[
-                    styles.dropdownItem,
-                    { borderBottomColor: colors.tileBorder },
-                  ]}
-                  onPress={() => {
-                    setLocation(loc);
-                    setShowLocations(false);
-                  }}
-                >
-                  <Text style={[styles.dropdownText, { color: colors.text }]}>
-                    {loc}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
-
-          <Text style={[styles.label, { color: colors.accent }]}>
-            Description
-          </Text>
-          <TextInput
-            style={[
-              styles.textArea,
-              { backgroundColor: colors.tile, color: colors.text },
-            ]}
-            multiline
-            numberOfLines={5}
-            placeholder="Share what happened, in your own words…"
-            placeholderTextColor={colors.textDim}
-            value={description}
-            onChangeText={setDescription}
+          <Switch
+            value={followUp}
+            onValueChange={setFollowUp}
+            trackColor={{ false: TOGGLE_OFF, true: TOGGLE_ON }}
+            thumbColor={COLORS.white}
+            ios_backgroundColor={TOGGLE_OFF}
           />
+        </View>
 
-          <Text style={[styles.label, { color: colors.accent }]}>
-            Optional photo
+        <View style={styles.toggleCard}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.toggleTitle}>Submit anonymously</Text>
+            <Text style={styles.toggleSub}>
+              Your identity stays hidden from the report record
+            </Text>
+          </View>
+          <Switch
+            value={anonymous}
+            onValueChange={setAnonymous}
+            trackColor={{ false: TOGGLE_OFF, true: TOGGLE_ON }}
+            thumbColor={COLORS.white}
+            ios_backgroundColor={TOGGLE_OFF}
+          />
+        </View>
+
+        <TouchableOpacity
+          style={styles.submitBtn}
+          onPress={() => router.push("/report-success")}
+        >
+          <Text style={styles.submitText}>Submit safety concern</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity onPress={() => router.push("/support")}>
+          <Text style={styles.supportLinkText}>
+            Need support now? Open Support Services →
           </Text>
-          {photoUri ? (
-            <View
-              style={[styles.photoPreviewWrap, { backgroundColor: colors.card }]}
-            >
-              <Image source={{ uri: photoUri }} style={styles.photoPreview} />
-              <View style={styles.photoActions}>
-                <TouchableOpacity
-                  style={[styles.photoActionBtn, { backgroundColor: colors.tile }]}
-                  onPress={pickPhoto}
-                >
-                  <Text style={[styles.photoActionText, { color: colors.navy }]}>
-                    Change
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.photoActionBtn, { backgroundColor: colors.tile }]}
-                  onPress={() => setPhotoUri(null)}
-                >
-                  <Text style={[styles.photoActionText, { color: colors.navy }]}>
-                    Remove
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          ) : (
-            <View
-              style={[
-                styles.photoBox,
-                {
-                  backgroundColor: colors.card,
-                  borderColor: colors.accent,
-                },
-              ]}
-            >
-              <Ionicons name="camera-outline" size={28} color={colors.accent} />
-              <Text style={[styles.photoText, { color: colors.textMuted }]}>
-                Add a photo of the area or concern
-              </Text>
-              <View style={styles.photoActions}>
-                <TouchableOpacity
-                  style={[styles.photoActionBtn, { backgroundColor: colors.tile }]}
-                  onPress={takePhoto}
-                >
-                  <Ionicons name="camera" size={16} color={colors.navy} />
-                  <Text style={[styles.photoActionText, { color: colors.navy }]}>
-                    Camera
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.photoActionBtn, { backgroundColor: colors.tile }]}
-                  onPress={pickPhoto}
-                >
-                  <Ionicons name="images-outline" size={16} color={colors.navy} />
-                  <Text style={[styles.photoActionText, { color: colors.navy }]}>
-                    Gallery
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          )}
+        </TouchableOpacity>
 
-          <View style={[styles.toggleCard, { backgroundColor: colors.cardAlt }]}>
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.toggleTitle, { color: colors.text }]}>
-                Request follow-up
-              </Text>
-              <Text style={[styles.toggleSub, { color: colors.textMuted }]}>
-                Ask security to contact you about this report
-              </Text>
-            </View>
-            <Switch
-              value={followUp}
-              onValueChange={setFollowUp}
-              trackColor={{ false: TOGGLE_OFF, true: colors.navy }}
-              thumbColor={colors.white}
-              ios_backgroundColor={TOGGLE_OFF}
-            />
-          </View>
-
-          <View style={[styles.toggleCard, { backgroundColor: colors.cardAlt }]}>
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.toggleTitle, { color: colors.text }]}>
-                Submit anonymously
-              </Text>
-              <Text style={[styles.toggleSub, { color: colors.textMuted }]}>
-                Your identity stays hidden from the report record
-              </Text>
-            </View>
-            <Switch
-              value={anonymous}
-              onValueChange={setAnonymous}
-              trackColor={{ false: TOGGLE_OFF, true: colors.navy }}
-              thumbColor={colors.white}
-              ios_backgroundColor={TOGGLE_OFF}
-            />
-          </View>
-
-          <TouchableOpacity
-            style={[
-              styles.submitBtn,
-              { backgroundColor: colors.accent, opacity: submitting ? 0.7 : 1 },
-            ]}
-            onPress={handleSubmit}
-            disabled={submitting || loading}
-          >
-            <Text style={[styles.submitText, { color: colors.bg }]}>
-              {submitting ? "Submitting…" : "Submit safety concern"}
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity onPress={() => router.push("/support")}>
-            <Text style={[styles.supportLinkText, { color: colors.accent }]}>
-              Need support now? Open Support Services →
-            </Text>
-          </TouchableOpacity>
-
-          <View style={{ height: 110 }} />
-        </ScrollView>
+        <View style={{ height: 110 }} />
+      </ScrollView>
       </Animated.View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1 },
+  safe: { flex: 1, backgroundColor: COLORS.bg },
   scroll: { padding: 18 },
   heading: {
+    color: COLORS.text,
     fontSize: 24,
     fontWeight: "800",
     marginBottom: 6,
   },
   subheading: {
+    color: COLORS.textMuted,
     fontSize: 14,
     lineHeight: 20,
     marginBottom: 16,
   },
   metaCard: {
+    backgroundColor: COLORS.card,
     borderRadius: 14,
     padding: 14,
     marginBottom: 16,
   },
   metaLabel: {
+    color: COLORS.textDim,
     fontSize: 11,
     fontWeight: "700",
     textTransform: "uppercase",
     marginTop: 6,
   },
-  metaValue: { fontSize: 15, fontWeight: "700" },
+  metaValue: { color: COLORS.text, fontSize: 15, fontWeight: "700" },
   label: {
+    color: COLORS.accent,
     fontWeight: "800",
     fontSize: 12,
     marginBottom: 8,
@@ -429,6 +295,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   select: {
+    backgroundColor: COLORS.tile,
     borderRadius: 12,
     padding: 14,
     flexDirection: "row",
@@ -436,8 +303,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 10,
   },
-  selectText: { fontSize: 15, fontWeight: "600" },
+  selectText: { color: COLORS.text, fontSize: 15, fontWeight: "600" },
   dropdown: {
+    backgroundColor: COLORS.cardAlt,
     borderRadius: 12,
     marginBottom: 12,
     overflow: "hidden",
@@ -446,32 +314,39 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "rgba(0,43,91,0.08)",
   },
-  dropdownText: { fontSize: 14 },
+  dropdownText: { color: COLORS.text, fontSize: 14 },
   textArea: {
+    backgroundColor: COLORS.tile,
     borderRadius: 12,
     padding: 14,
     minHeight: 120,
     textAlignVertical: "top",
+    color: COLORS.text,
     fontSize: 15,
     marginBottom: 12,
   },
   photoBox: {
+    backgroundColor: COLORS.card,
     borderRadius: 12,
     borderWidth: 1.5,
     borderStyle: "dashed",
+    borderColor: COLORS.accent,
     padding: 20,
     alignItems: "center",
     marginBottom: 14,
     gap: 8,
   },
   photoPreviewWrap: {
+    backgroundColor: COLORS.card,
     borderRadius: 12,
     overflow: "hidden",
     marginBottom: 14,
   },
   photoPreview: { width: "100%", height: 180 },
   photoText: {
+    color: COLORS.textMuted,
     fontSize: 13,
     textAlign: "center",
   },
@@ -486,12 +361,14 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
+    backgroundColor: COLORS.tile,
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 999,
   },
-  photoActionText: { fontWeight: "800", fontSize: 13 },
+  photoActionText: { color: COLORS.navy, fontWeight: "800", fontSize: 13 },
   toggleCard: {
+    backgroundColor: COLORS.cardAlt,
     borderRadius: 12,
     padding: 14,
     flexDirection: "row",
@@ -500,21 +377,24 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   toggleTitle: {
+    color: COLORS.text,
     fontWeight: "800",
     fontSize: 14,
     marginBottom: 2,
   },
-  toggleSub: { fontSize: 12 },
+  toggleSub: { color: COLORS.textMuted, fontSize: 12 },
   submitBtn: {
+    backgroundColor: COLORS.accent,
     borderRadius: 14,
     padding: 16,
     alignItems: "center",
     marginTop: 10,
   },
-  submitText: { fontWeight: "900", fontSize: 16 },
+  submitText: { color: COLORS.white, fontWeight: "900", fontSize: 16 },
   supportLinkText: {
     marginTop: 16,
     textAlign: "center",
+    color: COLORS.accent,
     fontWeight: "700",
     fontSize: 14,
     textDecorationLine: "underline",

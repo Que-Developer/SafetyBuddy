@@ -1,6 +1,6 @@
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Animated,
   Platform,
@@ -10,16 +10,22 @@ import {
   View,
 } from "react-native";
 
+const HOLD_MS = 3000;
+
 type Props = {
   onActivated: () => void;
 };
 
 /**
- * GRIT-style panic button: dark navy core, PRESS TO GET / HELP.
- * One tap activates — calls campus security immediately.
+ * GRIT-style panic button: dark navy core, PRESS TO GET / HELP,
+ * thick soft red–orange glow ring, hold-to-activate.
  */
 export function GritHelpButton({ onActivated }: Props) {
+  const [holding, setHolding] = useState(false);
+  const [progress, setProgress] = useState(0);
   const pulse = useRef(new Animated.Value(1)).current;
+  const holdTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const holdStart = useRef<number | null>(null);
 
   useEffect(() => {
     const useNative = Platform.OS !== "web";
@@ -41,22 +47,46 @@ export function GritHelpButton({ onActivated }: Props) {
     return () => loop.stop();
   }, [pulse]);
 
-  const handlePress = async () => {
+  const clearHold = () => {
+    if (holdTimer.current) clearInterval(holdTimer.current);
+    holdTimer.current = null;
+    holdStart.current = null;
+    setHolding(false);
+    setProgress(0);
+  };
+
+  const startHold = async () => {
+    setHolding(true);
+    holdStart.current = Date.now();
     try {
-      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     } catch {
       /* web */
     }
-    onActivated();
+
+    holdTimer.current = setInterval(() => {
+      if (!holdStart.current) return;
+      const elapsed = Date.now() - holdStart.current;
+      const p = Math.min(1, elapsed / HOLD_MS);
+      setProgress(p);
+      if (p >= 1) {
+        clearHold();
+        onActivated();
+      }
+    }, 40);
   };
 
   return (
     <Pressable
-      onPress={handlePress}
+      onPressIn={startHold}
+      onPressOut={clearHold}
       accessibilityRole="button"
-      accessibilityLabel="Press once to call campus security"
+      accessibilityLabel="Hold for 3 seconds to send emergency help request"
     >
-      <Animated.View style={[styles.wrap, { transform: [{ scale: pulse }] }]}>
+      <Animated.View
+        style={[styles.wrap, { transform: [{ scale: pulse }] }]}
+      >
+        {/* Layered soft halo — matches GRIT red/orange glow */}
         <View style={styles.glowFar} />
         <View style={styles.glowNear} />
         <View style={styles.glowRing}>
@@ -66,8 +96,22 @@ export function GritHelpButton({ onActivated }: Props) {
             end={{ x: 0.75, y: 1 }}
             style={styles.core}
           >
-            <Text style={styles.pressLabel}>PRESS TO GET</Text>
-            <Text style={styles.helpText}>HELP</Text>
+            {holding ? (
+              <>
+                <Text style={styles.pressLabel}>HOLD TO SEND</Text>
+                <Text style={styles.helpText}>{Math.round(progress * 100)}%</Text>
+                <View style={styles.progressTrack}>
+                  <View
+                    style={[styles.progressFill, { width: `${progress * 100}%` }]}
+                  />
+                </View>
+              </>
+            ) : (
+              <>
+                <Text style={styles.pressLabel}>PRESS TO GET</Text>
+                <Text style={styles.helpText}>HELP</Text>
+              </>
+            )}
           </LinearGradient>
         </View>
       </Animated.View>
@@ -110,9 +154,11 @@ const styles = StyleSheet.create({
     borderRadius: RING / 2,
     alignItems: "center",
     justifyContent: "center",
+    // Thick vivid ring like GRIT
     borderWidth: 18,
     borderColor: "#FF4E2A",
     backgroundColor: "transparent",
+    // Soften ring edge
     shadowColor: "#FF5A28",
     shadowOpacity: 0.95,
     shadowRadius: 18,
@@ -139,5 +185,17 @@ const styles = StyleSheet.create({
     fontWeight: "900",
     letterSpacing: 2,
     textTransform: "uppercase",
+  },
+  progressTrack: {
+    marginTop: 14,
+    width: 110,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: "rgba(255,255,255,0.22)",
+    overflow: "hidden",
+  },
+  progressFill: {
+    height: "100%",
+    backgroundColor: "#FF5A28",
   },
 });

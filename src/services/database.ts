@@ -81,8 +81,6 @@ async function api<T>(
   return data as T;
 }
 
-export { api };
-
 export async function getDb(): Promise<void> {
   const health = await api<{ ok: boolean; error?: string }>("/health", {
     auth: false,

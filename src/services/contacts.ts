@@ -1,39 +1,50 @@
-import {
-  addTrustedContact,
-  fetchTrustedContacts,
-  removeTrustedContact,
-  type TrustedContact,
-} from "@/services/campusApi";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
-export type { TrustedContact };
+export type TrustedContact = {
+  id: string;
+  name: string;
+  relationship: string;
+  phone: string;
+  email: string;
+  preferredAlertMethod: "SMS" | "Call" | "Email" | "App push";
+};
 
-/** Load trusted contacts from SQL Server for the logged-in student. */
+const KEY = "safetybuddy.trustedContacts";
+
+export const DEFAULT_TRUSTED_CONTACTS: TrustedContact[] = [
+  {
+    id: "tc-1",
+    name: "Thandi M.",
+    relationship: "Mother",
+    phone: "+27 82 000 1111",
+    email: "thandi.demo@example.com",
+    preferredAlertMethod: "SMS",
+  },
+  {
+    id: "tc-2",
+    name: "Sipho K.",
+    relationship: "Roommate",
+    phone: "+27 83 000 2222",
+    email: "sipho.demo@example.com",
+    preferredAlertMethod: "App push",
+  },
+];
+
 export async function loadTrustedContacts(): Promise<TrustedContact[]> {
   try {
-    return await fetchTrustedContacts();
+    const raw = await AsyncStorage.getItem(KEY);
+    if (!raw) return DEFAULT_TRUSTED_CONTACTS;
+    const parsed = JSON.parse(raw) as TrustedContact[];
+    return Array.isArray(parsed) && parsed.length > 0
+      ? parsed
+      : DEFAULT_TRUSTED_CONTACTS;
   } catch {
-    return [];
+    return DEFAULT_TRUSTED_CONTACTS;
   }
 }
 
 export async function saveTrustedContacts(
-  _contacts: TrustedContact[]
+  contacts: TrustedContact[]
 ): Promise<void> {
-  // Persistence is per-contact via API; kept for call-site compatibility.
-}
-
-export async function createTrustedContact(contact: {
-  name: string;
-  phone: string;
-  email?: string;
-  relationship?: string;
-  preferredAlertMethod?: string;
-}): Promise<TrustedContact[]> {
-  return addTrustedContact(contact);
-}
-
-export async function deleteTrustedContact(
-  id: string
-): Promise<TrustedContact[]> {
-  return removeTrustedContact(id);
+  await AsyncStorage.setItem(KEY, JSON.stringify(contacts));
 }
