@@ -1,3 +1,5 @@
+import { useTheme } from "@/context/ThemeContext";
+import { SAFETY_RESOURCES } from "@/data/mockData";
 import { Ionicons } from "@expo/vector-icons";
 import { useState } from "react";
 import {
@@ -11,8 +13,6 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { COLORS } from "@/constants/theme";
-import { SAFETY_RESOURCES } from "@/data/mockData";
 
 const GREEN = "#16A34A";
 
@@ -34,6 +34,7 @@ if (
 }
 
 export default function ResourcesScreen() {
+  const { colors } = useTheme();
   const [openId, setOpenId] = useState<string | null>(SAFETY_RESOURCES[0]?.id);
 
   const toggle = (id: string) => {
@@ -42,9 +43,12 @@ export default function ResourcesScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safe} edges={["bottom"]}>
+    <SafeAreaView
+      style={[styles.safe, { backgroundColor: colors.bg }]}
+      edges={["bottom"]}
+    >
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        <Text style={styles.intro}>
+        <Text style={[styles.intro, { color: colors.textMuted }]}>
           Calm guidance for emergencies, walking, residences, and supporting
           friends. Tell us what kind of help you need — there is no wrong question.
         </Text>
@@ -55,7 +59,13 @@ export default function ResourcesScreen() {
           return (
             <TouchableOpacity
               key={r.id}
-              style={styles.card}
+              style={[
+                styles.card,
+                {
+                  backgroundColor: colors.card,
+                  borderColor: colors.tileBorder,
+                },
+              ]}
               onPress={() => toggle(r.id)}
               activeOpacity={0.9}
             >
@@ -64,8 +74,10 @@ export default function ResourcesScreen() {
                   <Ionicons name={icon} size={20} color={GREEN} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.title}>{r.title}</Text>
-                  <Text style={styles.summary}>{r.summary}</Text>
+                  <Text style={[styles.title, { color: colors.text }]}>{r.title}</Text>
+                  <Text style={[styles.summary, { color: colors.textMuted }]}>
+                    {r.summary}
+                  </Text>
                 </View>
                 <Ionicons
                   name={open ? "chevron-up" : "chevron-down"}
@@ -73,7 +85,9 @@ export default function ResourcesScreen() {
                   color={GREEN}
                 />
               </View>
-              {open && <Text style={styles.body}>{r.body}</Text>}
+              {open && (
+                <Text style={[styles.body, { color: colors.text }]}>{r.body}</Text>
+              )}
             </TouchableOpacity>
           );
         })}
@@ -84,21 +98,18 @@ export default function ResourcesScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: COLORS.bg },
+  safe: { flex: 1 },
   scroll: { padding: 18 },
   intro: {
-    color: COLORS.textMuted,
     fontSize: 14,
     lineHeight: 21,
     marginBottom: 16,
   },
   card: {
-    backgroundColor: COLORS.card,
     borderRadius: 14,
     padding: 14,
     marginBottom: 10,
     borderWidth: 1,
-    borderColor: COLORS.tileBorder,
   },
   cardHeader: { flexDirection: "row", gap: 12, alignItems: "flex-start" },
   iconWrap: {
@@ -109,12 +120,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  title: { color: COLORS.text, fontWeight: "800", fontSize: 15, marginBottom: 4 },
-  summary: { color: COLORS.textMuted, fontSize: 12, lineHeight: 17 },
+  title: { fontWeight: "800", fontSize: 15, marginBottom: 4 },
+  summary: { fontSize: 12, lineHeight: 17 },
   body: {
     marginTop: 12,
     marginLeft: 52,
-    color: COLORS.text,
     opacity: 0.9,
     fontSize: 14,
     lineHeight: 21,

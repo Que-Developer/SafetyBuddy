@@ -67,9 +67,16 @@ export default function LoginScreen() {
           <View style={[styles.card, { backgroundColor: colors.card }]}>
             <Text style={[styles.label, { color: colors.text }]}>Email Address</Text>
             <TextInput
-              style={[styles.input, { backgroundColor: colors.white, color: colors.text }]}
+              style={[
+                styles.input,
+                {
+                  backgroundColor: colors.input,
+                  color: colors.text,
+                  borderColor: colors.tileBorder,
+                },
+              ]}
               placeholder="e.g JohnDoe@anonymous.com"
-              placeholderTextColor="#8A8A9A"
+              placeholderTextColor={colors.textDim}
               autoCapitalize="none"
               keyboardType="email-address"
               value={email}
@@ -77,11 +84,19 @@ export default function LoginScreen() {
             />
 
             <Text style={[styles.label, { color: colors.text }]}>Password</Text>
-            <View style={[styles.passwordRow, { backgroundColor: colors.white }]}>
+            <View
+              style={[
+                styles.passwordRow,
+                {
+                  backgroundColor: colors.input,
+                  borderColor: colors.tileBorder,
+                },
+              ]}
+            >
               <TextInput
                 style={[styles.passwordInput, { color: colors.text }]}
                 placeholder="e.g Abcd12345!"
-                placeholderTextColor="#8A8A9A"
+                placeholderTextColor={colors.textDim}
                 secureTextEntry={!showPassword}
                 value={password}
                 onChangeText={setPassword}
@@ -174,14 +189,12 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     marginBottom: 8,
     borderWidth: 1,
-    borderColor: "rgba(0,4,88,0.08)",
   },
   passwordRow: {
     flexDirection: "row",
     alignItems: "center",
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: "rgba(0,4,88,0.08)",
     marginBottom: 8,
   },
   passwordInput: {
