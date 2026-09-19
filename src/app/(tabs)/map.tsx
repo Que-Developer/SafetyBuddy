@@ -725,9 +725,9 @@ export default function MapScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: "#1a2332" },
-  mapFull: { ...StyleSheet.absoluteFillObject },
+  mapFull: { ...StyleSheet.absoluteFill },
   overlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     bottom: undefined,
     height: "58%",
   },
