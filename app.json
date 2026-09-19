@@ -45,6 +45,12 @@
           "photosPermission": "SafetyBuddy needs photo access so you can attach images to safety reports.",
           "cameraPermission": "SafetyBuddy needs camera access so you can photograph a safety concern."
         }
+      ],
+      [
+        "expo-sensors",
+        {
+          "motionPermission": "SafetyBuddy uses motion sensing so you can shake your phone to trigger an emergency panic alert."
+        }
       ]
     ],
     "experiments": {

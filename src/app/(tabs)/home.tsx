@@ -106,7 +106,7 @@ export default function HomeScreen() {
                 Emergency Hold For SOS
               </Text>
               <Text style={[styles.sosSub, { color: colors.white }]}>
-                Alert sent to trusted & security contacts
+                Tap here or shake your phone to start the alert
               </Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color={colors.white} />

@@ -1,3 +1,4 @@
+import { ShakeToPanicListener } from "@/components/ShakeToPanicListener";
 import { useTheme } from "@/context/ThemeContext";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Tabs } from "expo-router";
@@ -7,7 +8,8 @@ export default function TabsLayout() {
   const { colors } = useTheme();
 
   return (
-    
+    <>
+    <ShakeToPanicListener />
     <Tabs
       screenOptions={{
         headerStyle: { backgroundColor: colors.bg },
@@ -104,7 +106,7 @@ export default function TabsLayout() {
         options={{ href: null, title: "Resources" }}
       />
     </Tabs>
-   
+    </>
   );
 }
 

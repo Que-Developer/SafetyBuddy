@@ -44,8 +44,9 @@ export default function PanicScreen() {
         Sending emergency alert
       </Text>
       <Text style={[styles.sub, { color: colors.textMuted }]}>
-        The alert will be sent automatically in a few seconds. Tap cancel
-        below if this was a mistake.
+        The alert will be sent automatically in a few seconds. You can also
+        start this by shaking your phone from any tab. Tap cancel below if
+        this was a mistake.
       </Text>
 
       <View style={styles.center}>
