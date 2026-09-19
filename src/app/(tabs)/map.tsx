@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Dimensions,
-  PanResponder,
+  Modal,
   ScrollView,
   StyleSheet,
   Text,
@@ -27,13 +27,6 @@ import { loadTrustedContacts } from "@/services/contacts";
 import { WALK_WITH_ME_USE_CASE } from "@/data/walkWithMeUseCase";
 
 type LatLng = { lat: number; lng: number };
-type SheetTab = "walk" | "places" | "layers";
-
-const ETA_OPTIONS = [5, 10, 15, 20];
-const SCREEN_H = Dimensions.get("window").height;
-const SHEET_MIN = 120;
-const SHEET_MAX = Math.round(SCREEN_H * 0.52);
-const SHEET_COLLAPSED = 150;
 
 export default function MapScreen() {
   const { colors } = useTheme();
@@ -42,6 +35,9 @@ export default function MapScreen() {
   const [base, setBase] = useState<"street" | "satellite">("street");
   const [query, setQuery] = useState("");
   const [showSearch, setShowSearch] = useState(false);
+  const [showContactPicker, setShowContactPicker] = useState(false);
+  const [pendingDestination, setPendingDestination] = useState<{name: string, lat: number, lng: number} | null>(null);
+  
   const [activeLayers, setActiveLayers] = useState<MapLayerKey[]>([
     "danger",
     "security",
@@ -49,7 +45,6 @@ export default function MapScreen() {
     "firstAid",
     "safeZone",
   ]);
-  const [sheetTab, setSheetTab] = useState<SheetTab>("walk");
   const [pickMode, setPickMode] = useState<"start" | "end" | null>(null);
   const [start, setStart] = useState<LatLng | null>(null);
   const [end, setEnd] = useState<LatLng | null>(null);
@@ -66,38 +61,8 @@ export default function MapScreen() {
   const [gpsStatus, setGpsStatus] = useState<"pending" | "on" | "off">("pending");
   const [followLive, setFollowLive] = useState(false);
   const [status, setStatus] = useState("Sharing live campus location");
-  const [sheetHeight, setSheetHeight] = useState(SHEET_MAX);
-  const sheetHeightRef = useRef(SHEET_MAX);
-  const dragStart = useRef(SHEET_MAX);
   const didCenterGps = useRef(false);
   const arrivedRef = useRef(false);
-
-  const panResponder = useRef(
-    PanResponder.create({
-      onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dy) > 6,
-      onPanResponderGrant: () => {
-        dragStart.current = sheetHeightRef.current;
-      },
-      onPanResponderMove: (_, g) => {
-        const next = Math.max(
-          SHEET_MIN,
-          Math.min(SHEET_MAX, dragStart.current - g.dy)
-        );
-        sheetHeightRef.current = next;
-        setSheetHeight(next);
-      },
-      onPanResponderRelease: (_, g) => {
-        const mid = (SHEET_MIN + SHEET_MAX) / 2;
-        const projected = sheetHeightRef.current - g.vy * 40;
-        const snap =
-          projected < mid || g.vy > 0.8
-            ? SHEET_COLLAPSED
-            : SHEET_MAX;
-        sheetHeightRef.current = snap;
-        setSheetHeight(snap);
-      },
-    })
-  ).current;
 
   useEffect(() => {
     if (!followLive) return;
@@ -203,26 +168,45 @@ export default function MapScreen() {
 
   const selectedContact = contacts.find((c) => c.id === contactId);
 
+  // Helper to calculate ETA based on distance (approx walking speed 1.4 m/s)
+  const calculateETA = (startPoint: LatLng, endPoint: LatLng) => {
+    const R = 6371e3;
+    const φ1 = (startPoint.lat * Math.PI) / 180;
+    const φ2 = (endPoint.lat * Math.PI) / 180;
+    const Δφ = ((endPoint.lat - startPoint.lat) * Math.PI) / 180;
+    const Δλ = ((endPoint.lng - startPoint.lng) * Math.PI) / 180;
+
+    const a =
+      Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+      Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+    const distance = R * c;
+    const walkingSpeed = 1.4;
+    const timeSeconds = distance / walkingSpeed;
+    const timeMinutes = Math.max(1, Math.round(timeSeconds / 60));
+    return timeMinutes;
+  };
+
   const onMapEvent = useCallback(
     (event: MapEvent) => {
       if (event.type === "mapClick") {
         const point = { lat: event.lat, lng: event.lng };
-        if (pickMode === "start" || (!start && pickMode === "end" && !end)) {
-          if (pickMode === "start" || !start) {
-            setStart(point);
-            setStartLabel(`Start · ${point.lat.toFixed(4)}, ${point.lng.toFixed(4)}`);
-            setPickMode("end");
-            setSheetTab("walk");
-            setStatus("Now tap your destination");
-            return;
-          }
-        }
-        if (pickMode === "end" || (start && pickMode !== "start")) {
+        if (pickMode === "start" || (!start && !end && pickMode !== "end")) {
+          setStart(point);
+          setStartLabel(`Start · ${point.lat.toFixed(4)}, ${point.lng.toFixed(4)}`);
+          setPickMode("end");
+          setStatus("Now tap your destination");
+        } else if (pickMode === "end" || (start && !end)) {
           setEnd(point);
           setEndLabel(`Going to · ${point.lat.toFixed(4)}, ${point.lng.toFixed(4)}`);
           setPickMode(null);
-          setSheetTab("walk");
           setStatus("Set arrival time, then start Walk With Me");
+          
+          if (start) {
+            const calculatedEta = calculateETA(start, point);
+            setEta(calculatedEta);
+          }
         }
       }
       if (event.type === "simProgress") {
@@ -254,17 +238,42 @@ export default function MapScreen() {
     setStartLabel("Start · My live location");
     setPickMode("end");
     setFollowLive(true);
-    setSheetTab("walk");
     setStatus("Start set — tap destination on the map");
   };
 
   const chooseDestination = (name: string, lat: number, lng: number) => {
     setQuery(name);
     setShowSearch(false);
-    setEnd({ lat, lng });
-    setEndLabel(`Going to · ${name}`);
-    setPickMode(start ? null : "start");
-    setSheetTab("walk");
+    setPendingDestination({ name, lat, lng });
+    setShowContactPicker(true);
+  };
+
+  const confirmWalkWithContact = (contact: any) => {
+    if (!pendingDestination || !live) {
+      Alert.alert("Location Error", "Waiting for your live location. Please try again.");
+      return;
+    }
+
+    const startPoint = live;
+    const endPoint = { lat: pendingDestination.lat, lng: pendingDestination.lng };
+    
+    setStart(startPoint);
+    setEnd(endPoint);
+    setStartLabel("Start · My live location");
+    setEndLabel(`Going to · ${pendingDestination.name}`);
+    setContactId(contact.id);
+    
+    const calculatedEta = calculateETA(startPoint, endPoint);
+    setEta(calculatedEta);
+    
+    arrivedRef.current = false;
+    setWalkActive(true);
+    setSimulating(true);
+    setProgress(0);
+    setSecondsLeft(calculatedEta * 60);
+    setStatus(`Walking with ${contact.name} · ETA ${calculatedEta} min · confirm when you arrive`);
+    setShowContactPicker(false);
+    setPendingDestination(null);
   };
 
   const beginWalkMonitoring = (label: string, etaMinutes = eta) => {
@@ -274,19 +283,6 @@ export default function MapScreen() {
     setProgress(0);
     setSecondsLeft(etaMinutes * 60);
     setStatus(label);
-  };
-
-  const startWalk = () => {
-    if (!start || !end) {
-      setSheetTab("walk");
-      setPickMode(start ? "end" : "start");
-      setStatus("Select start and destination first");
-      return;
-    }
-    beginWalkMonitoring(
-      `Walking with ${selectedContact?.name ?? "contact"} · ETA ${eta} min · confirm when you arrive`,
-      eta
-    );
   };
 
   const markArrivedSafely = () => {
@@ -309,23 +305,6 @@ export default function MapScreen() {
     setSimulating(false);
     setSecondsLeft(0);
     setStatus("Walk cancelled");
-  };
-
-  /** Library → North Residence preset walk */
-  const runPresetWalk = () => {
-    const uc = WALK_WITH_ME_USE_CASE;
-    setSheetTab("walk");
-    setStart({ lat: uc.start.lat, lng: uc.start.lng });
-    setEnd({ lat: uc.end.lat, lng: uc.end.lng });
-    setStartLabel(`Start · ${uc.start.name}`);
-    setEndLabel(`Going to · ${uc.end.name}`);
-    setContactId(uc.contactId);
-    setEta(uc.etaMinutes);
-    setPickMode(null);
-    beginWalkMonitoring(
-      `${uc.start.name} → ${uc.end.name} with ${uc.contactName} · ETA ${uc.etaMinutes} min`,
-      uc.etaMinutes
-    );
   };
 
   const toggleLayer = (key: MapLayerKey) => {
@@ -358,62 +337,22 @@ export default function MapScreen() {
       </View>
 
       <SafeAreaView style={styles.overlay} edges={["top"]} pointerEvents="box-none">
+        {/* Top row now only contains the Search button on the right */}
         <View style={styles.topRow} pointerEvents="box-none">
-          <TouchableOpacity
-            style={[styles.roundBtn, { backgroundColor: colors.card }]}
-            onPress={() => router.push("/(tabs)/profile")}
-          >
-            <Ionicons name="settings-outline" size={20} color={ACCENT} />
-          </TouchableOpacity>
-
           <View style={styles.topRightStack}>
             <TouchableOpacity
               style={[styles.roundBtn, { backgroundColor: colors.card }]}
-              onPress={() => router.push("/alerts")}
-            >
-              <Ionicons name="mail-outline" size={18} color={ACCENT} />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.roundBtn, { backgroundColor: colors.card }]}
-              onPress={() => setShowSearch((v) => !v)}
+              onPress={() => setShowSearch(true)}
             >
               <Ionicons name="search" size={18} color={ACCENT} />
             </TouchableOpacity>
           </View>
         </View>
 
-        {showSearch && (
-          <View style={[styles.searchCard, { backgroundColor: colors.card }]}>
-            <TextInput
-              style={[styles.searchInput, { color: colors.text, borderBottomColor: colors.tileBorder }]}
-              placeholder="Where to?"
-              placeholderTextColor={colors.textDim}
-              value={query}
-              onChangeText={setQuery}
-              autoFocus
-            />
-            {filteredDestinations.map((d) => (
-              <TouchableOpacity
-                key={d.id}
-                style={[styles.searchItem, { borderBottomColor: colors.tileBorder }]}
-                onPress={() => chooseDestination(d.name, d.lat, d.lng)}
-              >
-                <Text style={[styles.searchTitle, { color: colors.text }]}>{d.name}</Text>
-                <Text style={[styles.searchSub, { color: colors.textMuted }]}>{d.description}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        )}
-
+        {/* Side stack - Lowered to the bottom right corner */}
         <View style={styles.sideStack} pointerEvents="box-none">
           <TouchableOpacity
-            style={[styles.roundBtn, { backgroundColor: colors.card }]}
-            onPress={() => router.push("/(tabs)/profile")}
-          >
-            <Ionicons name="person-add-outline" size={20} color={ACCENT} />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.roundBtn, { backgroundColor: colors.card }]}
+            style={[styles.roundBtn2, { backgroundColor: colors.card }]}
             onPress={() => {
               if (live) {
                 setFollowLive(true);
@@ -424,7 +363,7 @@ export default function MapScreen() {
             <Ionicons name="locate" size={20} color={ACCENT} />
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.roundBtn, { backgroundColor: colors.card }]}
+            style={[styles.roundBtn2, { backgroundColor: colors.card }]}
             onPress={() => {
               if (mode === "3d") {
                 setMode("2d");
@@ -441,230 +380,87 @@ export default function MapScreen() {
         </View>
       </SafeAreaView>
 
-      <View style={[styles.sheet, { height: sheetHeight, backgroundColor: colors.bg }]}>
-        <View {...panResponder.panHandlers} style={styles.sheetDragZone}>
-          <View style={[styles.handle, { backgroundColor: colors.tileBorder }]} />
-          <View style={styles.sheetTitleRow}>
-            <Text style={[styles.sheetTitle, { color: colors.text }]}>Walk With Me</Text>
-            <TouchableOpacity
-              onPress={() =>
-                setSheetHeight((h) => {
-                  const next = h > SHEET_COLLAPSED + 40 ? SHEET_COLLAPSED : SHEET_MAX;
-                  sheetHeightRef.current = next;
-                  return next;
-                })
-              }
-              hitSlop={12}
-            >
-              <Ionicons
-                name={sheetHeight > SHEET_COLLAPSED + 40 ? "chevron-down" : "chevron-up"}
-                size={22}
-                color={ACCENT}
-              />
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {sheetHeight > SHEET_COLLAPSED + 20 && (
-          <>
-        <View style={styles.segRow}>
-          {(
-            [
-              ["walk", "walk"],
-              ["places", "business"],
-              ["layers", "layers"],
-            ] as const
-          ).map(([key, icon]) => {
-            const on = sheetTab === key;
-            return (
-              <TouchableOpacity
-                key={key}
-                style={[
-                  styles.segBtn,
-                  { backgroundColor: colors.card, borderColor: colors.tileBorder },
-                  on && { backgroundColor: colors.accent, borderColor: colors.accent },
-                ]}
-                onPress={() => setSheetTab(key)}
-              >
-                <Ionicons
-                  name={icon}
-                  size={20}
-                  color={on ? colors.bg : colors.text}
-                />
+      {/* --- SEARCH MODAL --- */}
+      <Modal
+        visible={showSearch}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowSearch(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.bg }]}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>Where to?</Text>
+              <TouchableOpacity onPress={() => setShowSearch(false)}>
+                <Ionicons name="close-circle" size={28} color={colors.textMuted} />
               </TouchableOpacity>
-            );
-          })}
-        </View>
-
-        <ScrollView
-          style={styles.sheetScroll}
-          contentContainerStyle={{ paddingBottom: 24 }}
-          showsVerticalScrollIndicator={false}
-        >
-          {sheetTab === "walk" && (
-            <View style={[styles.listCard, { backgroundColor: colors.cardAlt }]}>
-              <Text style={[styles.hint, { color: colors.textMuted }]}>{status}</Text>
-              <TouchableOpacity
-                style={[
-                  styles.pointCard,
-                  { backgroundColor: colors.card },
-                  pickMode === "start" && styles.pointOn,
-                ]}
-                onPress={() => setPickMode("start")}
-              >
-                <Ionicons name="locate" size={18} color={ACCENT} />
-                <Text style={[styles.pointText, { color: colors.text }]}>{startLabel}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.myLoc} onPress={useMyLocationAsStart}>
-                <Ionicons name="navigate-circle" size={18} color={ACCENT} />
-                <Text style={[styles.myLocText, { color: colors.navy }]}>
-                  Use my live location as start
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[
-                  styles.pointCard,
-                  { backgroundColor: colors.card },
-                  pickMode === "end" && styles.pointOn,
-                ]}
-                onPress={() => setPickMode("end")}
-              >
-                <Ionicons name="flag" size={18} color={ACCENT} />
-                <Text style={[styles.pointText, { color: colors.text }]}>{endLabel}</Text>
-              </TouchableOpacity>
-              <Text style={[styles.label, { color: colors.textMuted }]}>
-                Estimated arrival
-              </Text>
-              <View style={styles.etaRow}>
-                {ETA_OPTIONS.map((m) => (
-                  <TouchableOpacity
-                    key={m}
-                    style={[
-                      styles.etaChip,
-                      { backgroundColor: colors.card },
-                      eta === m && { backgroundColor: colors.accent },
-                    ]}
-                    onPress={() => setEta(m)}
-                  >
-                    <Text
-                      style={[
-                        styles.etaText,
-                        { color: colors.text },
-                        eta === m && { color: colors.bg },
-                      ]}
-                    >
-                      {m} min
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-              {walkActive && (
-                <>
-                  <View style={[styles.progressWrap, { backgroundColor: colors.card }]}>
-                    <View
-                      style={[
-                        styles.progressFill,
-                        { width: `${progress * 100}%`, backgroundColor: colors.accent },
-                      ]}
-                    />
-                  </View>
-                  <Text style={[styles.countdown, { color: colors.navy }]}>
-                    Time left to arrive: {formatCountdown(secondsLeft)}
-                  </Text>
-                </>
-              )}
-              {walkActive ? (
-                <>
-                  <TouchableOpacity
-                    style={[styles.arrivedBtn, { backgroundColor: colors.success }]}
-                    onPress={markArrivedSafely}
-                  >
-                    <Text style={[styles.arrivedBtnText, { color: colors.white }]}>
-                      I arrived safely
-                    </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.demoBtn} onPress={cancelWalk}>
-                    <Text style={[styles.demoBtnText, { color: colors.textMuted }]}>
-                      Cancel walk
-                    </Text>
-                  </TouchableOpacity>
-                </>
-              ) : (
-                <>
-                  <TouchableOpacity
-                    style={[styles.primaryBtn, { backgroundColor: colors.accent }]}
-                    onPress={startWalk}
-                  >
-                    <Text style={[styles.primaryText, { color: colors.bg }]}>
-                      Start Walk With Me
-                    </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.demoBtn} onPress={runPresetWalk}>
-                    <Text style={[styles.demoBtnText, { color: colors.textMuted }]}>
-                      Run walk (Library → North Res)
-                    </Text>
-                  </TouchableOpacity>
-                </>
-              )}
             </View>
-          )}
-
-          {sheetTab === "places" && (
-            <View style={[styles.listCard, { backgroundColor: colors.cardAlt }]}>
-              {CAMPUS_DESTINATIONS.map((d) => (
+            <TextInput
+              style={[styles.modalSearchInput, { color: colors.text, borderBottomColor: colors.tileBorder }]}
+              placeholder="Search destinations..."
+              placeholderTextColor={colors.textDim}
+              value={query}
+              onChangeText={setQuery}
+              autoFocus
+            />
+            <ScrollView style={styles.modalScroll}>
+              {filteredDestinations.map((d) => (
                 <TouchableOpacity
                   key={d.id}
-                  style={[styles.personRow, { borderBottomColor: colors.tileBorder }]}
+                  style={[styles.modalItem, { borderBottomColor: colors.tileBorder }]}
                   onPress={() => chooseDestination(d.name, d.lat, d.lng)}
                 >
-                  <View style={[styles.avatar, { backgroundColor: colors.bg }]}>
-                    <Ionicons name="location" size={20} color={ACCENT} />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.personName, { color: colors.text }]}>{d.name}</Text>
-                    <Text style={[styles.personPlace, { color: colors.textMuted }]}>
-                      {d.description}
-                    </Text>
+                  <Ionicons name="location-outline" size={20} color={ACCENT} style={{ marginRight: 12 }} />
+                  <View>
+                    <Text style={[styles.modalItemTitle, { color: colors.text }]}>{d.name}</Text>
+                    <Text style={[styles.modalItemSub, { color: colors.textMuted }]}>{d.description}</Text>
                   </View>
                 </TouchableOpacity>
               ))}
-            </View>
-          )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
 
-          {sheetTab === "layers" && (
-            <View style={[styles.listCard, { backgroundColor: colors.cardAlt }]}>
-              <Text style={[styles.hint, { color: colors.textMuted }]}>
-                Map: {mode === "3d" ? "3D" : base === "satellite" ? "Satellite" : "Street"}
-              </Text>
-              <View style={styles.chips}>
-                {MAP_LAYERS.map((layer) => {
-                  const on = activeLayers.includes(layer.key);
-                  return (
-                    <TouchableOpacity
-                      key={layer.key}
-                      style={[
-                        styles.chip,
-                        { backgroundColor: colors.card },
-                        on && { borderColor: colors.accent, borderWidth: 1.5 },
-                      ]}
-                      onPress={() => toggleLayer(layer.key)}
-                    >
-                      <View
-                        style={[styles.chipDot, { backgroundColor: layer.color }]}
-                      />
-                      <Text style={[styles.chipText, { color: colors.text }]}>
-                        {layer.label}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
+      {/* --- CONTACT PICKER MODAL --- */}
+      <Modal
+        visible={showContactPicker}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowContactPicker(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.bg }]}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>Walk with...</Text>
+              <TouchableOpacity onPress={() => setShowContactPicker(false)}>
+                <Ionicons name="close-circle" size={28} color={colors.textMuted} />
+              </TouchableOpacity>
             </View>
-          )}
-        </ScrollView>
-          </>
-        )}
-      </View>
+            <Text style={[styles.modalSubtitle, { color: colors.textMuted }]}>
+              Choose a trusted contact to share your live location with.
+            </Text>
+            <ScrollView style={styles.modalScroll}>
+              {contacts.map((c) => (
+                <TouchableOpacity
+                  key={c.id}
+                  style={[styles.contactItem, { borderBottomColor: colors.tileBorder }]}
+                  onPress={() => confirmWalkWithContact(c)}
+                >
+                  <View style={[styles.contactAvatar, { backgroundColor: c.color }]}>
+                    <Text style={[styles.contactInitial, { color: colors.bg }]}>{c.initial}</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.contactName, { color: colors.text }]}>{c.name}</Text>
+                    <Text style={[styles.contactPhone, { color: colors.textMuted }]}>{c.phone}</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={20} color={colors.textDim} />
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -680,7 +476,7 @@ const styles = StyleSheet.create({
   topRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-end',
     paddingHorizontal: 14,
     paddingTop: 4,
   },
@@ -693,164 +489,100 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     ...CARD_SHADOW,
   },
-  searchCard: {
-    marginHorizontal: 14,
-    marginTop: 10,
-    borderRadius: 16,
-    overflow: 'hidden',
+  roundBtn2: {
+    width: 44,
+    height: 44,
+    top: 300,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
     ...CARD_SHADOW,
   },
-  searchInput: {
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  searchItem: {
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  searchTitle: { fontWeight: '800' },
-  searchSub: { fontSize: 12, marginTop: 2 },
+  // Lowered to the bottom right corner
   sideStack: {
     position: 'absolute',
     right: 14,
-    bottom: 16,
+    bottom: 0, // Anchors to the very bottom
+    paddingBottom: 16, // Adds a little breathing room from the edge
     gap: 10,
+    justifyContent: 'flex-end',
   },
-  sheet: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 72,
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    paddingTop: 4,
-    paddingHorizontal: 16,
-    ...CARD_SHADOW,
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
   },
-  sheetDragZone: {
-    paddingTop: 4,
-    paddingBottom: 8,
+  modalContent: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: '80%',
+    paddingBottom: 24,
   },
-  handle: {
-    alignSelf: 'center',
-    width: 42,
-    height: 4,
-    borderRadius: 2,
-    marginBottom: 8,
-  },
-  sheetTitleRow: {
+  modalHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 4,
+    padding: 20,
+    paddingBottom: 10,
   },
-  sheetTitle: {
+  modalTitle: {
+    fontSize: 22,
     fontWeight: '900',
-    fontSize: 26,
   },
-  segRow: { flexDirection: 'row', gap: 10, marginBottom: 14 },
-  segBtn: {
-    flex: 1,
-    height: 48,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    ...CARD_SHADOW,
+  modalSubtitle: {
+    fontSize: 14,
+    paddingHorizontal: 20,
+    marginBottom: 15,
   },
-  sheetScroll: { flex: 1 },
-  listCard: {
-    borderRadius: 22,
-    padding: 12,
-  },
-  personRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
+  modalSearchInput: {
+    marginHorizontal: 20,
     paddingVertical: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  avatar: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  personName: { fontWeight: '800', fontSize: 16 },
-  personPlace: { fontSize: 13, marginTop: 2 },
-  hint: { fontSize: 13, marginBottom: 10, lineHeight: 18 },
-  pointCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 8,
-    borderWidth: 2,
-    borderColor: 'transparent',
-  },
-  pointOn: { borderColor: '#FFD24C' },
-  pointText: { flex: 1, fontWeight: '700', fontSize: 13 },
-  myLoc: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+    borderBottomWidth: 1,
+    fontSize: 16,
     marginBottom: 10,
   },
-  myLocText: { fontWeight: '800', fontSize: 12 },
-  label: { fontWeight: '800', fontSize: 12, marginBottom: 8 },
-  etaRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
-  etaChip: {
-    borderRadius: 999,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+  modalScroll: {
+    paddingHorizontal: 20,
   },
-  etaText: { fontWeight: '800', fontSize: 12 },
-  progressWrap: {
-    height: 8,
-    borderRadius: 4,
-    overflow: 'hidden',
-    marginBottom: 12,
-  },
-  progressFill: { height: '100%' },
-  countdown: {
-    fontWeight: '800',
-    fontSize: 14,
-    textAlign: 'center',
-    marginBottom: 12,
-  },
-  primaryBtn: {
-    borderRadius: 14,
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  primaryText: { fontWeight: '900', fontSize: 15 },
-  arrivedBtn: {
-    borderRadius: 14,
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  arrivedBtnText: { fontWeight: '900', fontSize: 15 },
-  demoBtn: {
-    marginTop: 10,
-    borderRadius: 14,
-    paddingVertical: 12,
-    alignItems: 'center',
-  },
-  demoBtnText: { fontWeight: '800', fontSize: 13 },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: {
+  modalItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    borderRadius: 14,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingVertical: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  chipDot: { width: 12, height: 12, borderRadius: 6 },
-  chipText: { fontWeight: '700', fontSize: 12 },
+  modalItemTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  modalItemSub: {
+    fontSize: 13,
+    marginTop: 2,
+  },
+  contactItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  contactAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 15,
+  },
+  contactInitial: {
+    fontSize: 20,
+    fontWeight: '900',
+  },
+  contactName: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  contactPhone: {
+    fontSize: 13,
+    marginTop: 2,
+  },
 });
-
