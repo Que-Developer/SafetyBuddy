@@ -1,3 +1,13 @@
+import { COLORS } from "@/constants/theme";
+import { useAuth } from "@/context/AuthContext";
+import {
+  INCIDENT_STATUS_FLOW,
+  RESPONDER_INCIDENTS,
+  RESPONDERS,
+  STATUS_COLORS,
+  type IncidentStatus,
+  type ResponderIncident,
+} from "@/data/mockData";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useMemo, useState } from "react";
@@ -9,16 +19,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useAuth } from "@/context/AuthContext";
-import { COLORS } from "@/constants/theme";
-import {
-  INCIDENT_STATUS_FLOW,
-  RESPONDER_INCIDENTS,
-  RESPONDERS,
-  STATUS_COLORS,
-  type IncidentStatus,
-  type ResponderIncident,
-} from "@/data/mockData";
+
 
 type FilterKey = "All" | IncidentStatus;
 

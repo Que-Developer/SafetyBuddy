@@ -1,11 +1,12 @@
-import { router } from "expo-router";
-import { useEffect, useRef, useState } from "react";
-import { Animated, StyleSheet, Text, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { SafetyBuddyLogo } from "@/components/SafetyBuddyLogo";
 import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
 import { isSecurityRole } from "@/services/database";
+import { router } from "expo-router";
+import { useEffect, useRef, useState } from "react";
+import { Animated, Image, StyleSheet, Text, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+
+const logo = require("../../assets/visily-image-4.png");
 
 export default function SplashScreen() {
   const { ready, user } = useAuth();
@@ -16,7 +17,7 @@ export default function SplashScreen() {
   useEffect(() => {
     Animated.timing(progress, {
       toValue: 1,
-      duration: 1800,
+      duration: 3000,
       useNativeDriver: false,
     }).start(() => setDone(true));
   }, [progress]);
@@ -46,7 +47,11 @@ export default function SplashScreen() {
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: colors.bg }]}>
       <View style={styles.center}>
-        <SafetyBuddyLogo size="lg" />
+       <Image 
+          source={logo} 
+          style={styles.logo} 
+          resizeMode="contain" 
+        />
       </View>
 
       <View style={styles.footer}>
@@ -92,5 +97,9 @@ const styles = StyleSheet.create({
   },
   fill: {
     height: "100%",
+  },
+  logo: {
+    width: 280,   // Adjust this to make the logo bigger or smaller
+    height: 280,  // Keep height and width the same to keep it square
   },
 });

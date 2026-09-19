@@ -1,22 +1,22 @@
+import { GritHelpButton } from "@/components/GritHelpButton";
+import { useTheme } from "@/context/ThemeContext";
+import { loadTrustedContacts, type TrustedContact } from "@/services/contacts";
+import { getSharedLocation, type SharedLocation } from "@/services/location";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { GritHelpButton } from "@/components/GritHelpButton";
-import { useTheme } from "@/context/ThemeContext";
-import { loadTrustedContacts, type TrustedContact } from "@/services/contacts";
-import { getSharedLocation, type SharedLocation } from "@/services/location";
 
 /**
- * Panic tab stays IDLE until the student deliberately activates HELP.
- * This prevents accidental “calling security” when merely opening the tab.
+ * Panic tab:
+ *  - Phase 1 (idle): Grit button auto-counts down 5 → 1
+ *  - Phase 2 (sent): 2-second confirmation → auto-redirects to Calling Security
  */
 export default function PanicScreen() {
   const router = useRouter();
   const { colors } = useTheme();
-  const [phase, setPhase] = useState<"idle" | "counting" | "sent">("idle");
-  const [countdown, setCountdown] = useState(5);
+  const [phase, setPhase] = useState<"idle" | "sent">("idle");
   const [location, setLocation] = useState<SharedLocation | null>(null);
   const [contacts, setContacts] = useState<TrustedContact[]>([]);
 
@@ -25,81 +25,43 @@ export default function PanicScreen() {
     loadTrustedContacts().then(setContacts);
   }, []);
 
-  useEffect(() => {
-    if (phase !== "counting") return;
-    if (countdown <= 0) {
-      setPhase("sent");
-      return;
-    }
-    const t = setTimeout(() => setCountdown((c) => c - 1), 1000);
-    return () => clearTimeout(t);
-  }, [phase, countdown]);
-
+  // When phase becomes "sent", wait 2 seconds then redirect to Calling Security
   useEffect(() => {
     if (phase !== "sent") return;
-    const t = setTimeout(() => router.replace("/panicCountdownAlert"), 3500);
+    const t = setTimeout(() => {
+      router.replace("/panicCountdownAlert");
+    }, 2000);
     return () => clearTimeout(t);
   }, [phase, router]);
 
   const startAlert = () => {
-    setCountdown(5);
-    setPhase("counting");
+    setPhase("sent");
   };
 
   const cancel = () => {
     setPhase("idle");
-    setCountdown(5);
     router.replace("/AlertCanceled");
   };
 
+  // ==========================================
+  // PHASE 1: IDLE — Grit button auto-countdown
+  // ==========================================
   if (phase === "idle") {
     return (
       <SafeAreaView
         style={[styles.safe, { backgroundColor: colors.bg }]}
         edges={["top", "bottom"]}
       >
-        <Text style={[styles.title, { color: colors.text }]}>Panic alert</Text>
-        <Text style={[styles.sub, { color: colors.textMuted }]}>
-          Hold the button for 3 seconds only if you need help. Nothing is sent
-          until you finish holding.
+        <Text style={[styles.title, { color: colors.text }]}>
+          Sending emergency alert
         </Text>
+        <Text style={[styles.sub, { color: colors.textMuted }]}>
+          The alert will be sent automatically in a few seconds. Tap cancel
+          below if this was a mistake.
+        </Text>
+
         <View style={styles.center}>
           <GritHelpButton onActivated={startAlert} />
-          <Text style={[styles.holdHint, { color: colors.textMuted }]}>
-            Hold for 3 seconds · release to cancel
-          </Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  if (phase === "counting") {
-    return (
-      <SafeAreaView
-        style={[styles.safe, { backgroundColor: colors.bg }]}
-        edges={["top", "bottom"]}
-      >
-        <Text style={[styles.title, { color: colors.text }]}>
-          Sending help request
-        </Text>
-        <Text style={[styles.sub, { color: colors.textMuted }]}>
-          Emergency alert will be sent in {countdown} seconds. Tap cancel if
-          this was accidental.
-        </Text>
-
-        <View style={[styles.card, { backgroundColor: colors.card }]}>
-          <View style={styles.redCircle}>
-            <Ionicons name="alert" size={36} color="#FFF" />
-          </View>
-          <Text style={[styles.alertType, { color: colors.navy }]}>
-            HELP REQUEST
-          </Text>
-          <Text style={[styles.countdown, { color: colors.navy }]}>
-            {countdown}
-          </Text>
-          <Text style={[styles.loc, { color: colors.textMuted }]}>
-            Location: {location?.label ?? "Capturing…"}
-          </Text>
         </View>
 
         <TouchableOpacity
@@ -114,12 +76,18 @@ export default function PanicScreen() {
     );
   }
 
+  // ==========================================
+  // PHASE 2: SENT — 2-second confirmation card
+  // ==========================================
   return (
     <SafeAreaView
       style={[styles.safe, { backgroundColor: colors.bg }]}
       edges={["top", "bottom"]}
     >
-      <Text style={[styles.title, { color: colors.text }]}>Help is on the way</Text>
+      <Text style={[styles.title, { color: colors.text }]}>
+        Help is on the way
+      </Text>
+
       <View style={[styles.card, { backgroundColor: colors.card }]}>
         <View style={styles.greenCircle}>
           <Ionicons name="checkmark" size={36} color="#fff" />
@@ -129,7 +97,7 @@ export default function PanicScreen() {
         </Text>
         <Text style={[styles.sub, { color: colors.textMuted }]}>
           Campus security and your trusted contacts were notified with your
-          location. No phone call was placed automatically.
+          location. Connecting you now…
         </Text>
       </View>
 
@@ -139,7 +107,7 @@ export default function PanicScreen() {
             Campus Security
           </Text>
           <Text style={[styles.contactSub, { color: colors.textMuted }]}>
-            Alert notified — not auto-dialed
+            Alert notified — dispatching
           </Text>
         </View>
         {contacts.slice(0, 3).map((c) => (
@@ -174,21 +142,11 @@ const styles = StyleSheet.create({
   title: { fontSize: 24, fontWeight: "900" },
   sub: { fontSize: 14, lineHeight: 20, marginTop: 8 },
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
-  holdHint: { marginTop: 12, fontSize: 12 },
   card: {
     borderRadius: 20,
     padding: 28,
     alignItems: "center",
     marginTop: 20,
-  },
-  redCircle: {
-    backgroundColor: "#E63946",
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 14,
   },
   greenCircle: {
     backgroundColor: "#22C55E",
@@ -199,9 +157,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginBottom: 14,
   },
-  alertType: { fontWeight: "800", letterSpacing: 1, fontSize: 13 },
-  countdown: { fontSize: 80, fontWeight: "900", marginVertical: 6 },
-  loc: { fontSize: 13, marginTop: 4 },
   sentTitle: { fontSize: 20, fontWeight: "900", marginBottom: 8 },
   cancelBtn: {
     marginTop: "auto",

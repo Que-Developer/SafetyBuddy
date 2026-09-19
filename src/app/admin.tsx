@@ -1,17 +1,5 @@
-import { Ionicons } from "@expo/vector-icons";
-import { useEffect, useState } from "react";
-import {
-  Alert,
-  ScrollView,
-  StyleSheet,
-  Switch,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { CARD_SHADOW, COLORS } from "@/constants/theme";
+import { useTheme } from "@/context/ThemeContext";
 import {
   CAMPUS_ZONES,
   EMERGENCY_CONTACTS,
@@ -25,6 +13,19 @@ import {
   type SafetyResource,
 } from "@/data/mockData";
 import { listUsers, type AppUser } from "@/services/database";
+import { Ionicons } from "@expo/vector-icons";
+import { useEffect, useState } from "react";
+import {
+  Alert,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 type SectionKey =
   | "contacts"
@@ -96,9 +97,10 @@ export default function AdminScreen() {
       prev.map((c) => (c.id === id ? { ...c, active: !c.active } : c))
     );
   };
-
+ const { colors } = useTheme();
   return (
-    <SafeAreaView style={styles.safe} edges={["bottom"]}>
+  <SafeAreaView style={[styles.safe, { backgroundColor: colors.bg }]}>
+       
       <ScrollView
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}

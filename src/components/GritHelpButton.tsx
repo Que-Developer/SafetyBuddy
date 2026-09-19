@@ -1,32 +1,31 @@
+import { useTheme } from "@/context/ThemeContext";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import { useEffect, useRef, useState } from "react";
 import {
   Animated,
   Platform,
-  Pressable,
   StyleSheet,
   Text,
   View,
 } from "react-native";
 
-const HOLD_MS = 3000;
+const COUNTDOWN_START = 5; // seconds
+const TICK_MS = 500;      // 1 second per tick
 
 type Props = {
   onActivated: () => void;
+  onCancelled?: () => void;
 };
 
-/**
- * GRIT-style panic button: dark navy core, PRESS TO GET / HELP,
- * thick soft red–orange glow ring, hold-to-activate.
- */
-export function GritHelpButton({ onActivated }: Props) {
-  const [holding, setHolding] = useState(false);
-  const [progress, setProgress] = useState(0);
+export function GritHelpButton({ onActivated, onCancelled }: Props) {
+  const { colors } = useTheme();
+  const [seconds, setSeconds] = useState(COUNTDOWN_START);
   const pulse = useRef(new Animated.Value(1)).current;
-  const holdTimer = useRef<ReturnType<typeof setInterval> | null>(null);
-  const holdStart = useRef<number | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const hasFired = useRef(false);
 
+  // --- PULSE ANIMATION ---
   useEffect(() => {
     const useNative = Platform.OS !== "web";
     const loop = Animated.loop(
@@ -47,75 +46,70 @@ export function GritHelpButton({ onActivated }: Props) {
     return () => loop.stop();
   }, [pulse]);
 
-  const clearHold = () => {
-    if (holdTimer.current) clearInterval(holdTimer.current);
-    holdTimer.current = null;
-    holdStart.current = null;
-    setHolding(false);
-    setProgress(0);
-  };
-
-  const startHold = async () => {
-    setHolding(true);
-    holdStart.current = Date.now();
+  // --- AUTO-START COUNTDOWN ON MOUNT ---
+  useEffect(() => {
     try {
-      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    } catch {
-      /* web */
-    }
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    } catch {}
 
-    holdTimer.current = setInterval(() => {
-      if (!holdStart.current) return;
-      const elapsed = Date.now() - holdStart.current;
-      const p = Math.min(1, elapsed / HOLD_MS);
-      setProgress(p);
-      if (p >= 1) {
-        clearHold();
-        onActivated();
+    let remaining = COUNTDOWN_START;
+
+    intervalRef.current = setInterval(() => {
+      remaining -= 1;
+
+      // Tick haptic on each second
+      try {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      } catch {}
+
+      if (remaining <= 0) {
+        if (intervalRef.current) clearInterval(intervalRef.current);
+        intervalRef.current = null;
+        if (!hasFired.current) {
+          hasFired.current = true;
+          try {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+          } catch {}
+          onActivated();
+        }
+        return;
       }
-    }, 40);
-  };
+
+      setSeconds(remaining);
+    }, TICK_MS);
+
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, [onActivated]);
+
+  // Called from outside by a Cancel button (in the parent screen)
+  // We expose this via onCancelled — parent triggers via key change or state.
 
   return (
-    <Pressable
-      onPressIn={startHold}
-      onPressOut={clearHold}
-      accessibilityRole="button"
-      accessibilityLabel="Hold for 3 seconds to send emergency help request"
+    <Animated.View
+      style={[styles.wrap, { transform: [{ scale: pulse }] }]}
     >
-      <Animated.View
-        style={[styles.wrap, { transform: [{ scale: pulse }] }]}
-      >
-        {/* Layered soft halo — matches GRIT red/orange glow */}
-        <View style={styles.glowFar} />
-        <View style={styles.glowNear} />
-        <View style={styles.glowRing}>
-          <LinearGradient
-            colors={["#1E4A88", "#143560", "#0C2348"]}
-            start={{ x: 0.25, y: 0 }}
-            end={{ x: 0.75, y: 1 }}
-            style={styles.core}
-          >
-            {holding ? (
-              <>
-                <Text style={styles.pressLabel}>HOLD TO SEND</Text>
-                <Text style={styles.helpText}>{Math.round(progress * 100)}%</Text>
-                <View style={styles.progressTrack}>
-                  <View
-                    style={[styles.progressFill, { width: `${progress * 100}%` }]}
-                  />
-                </View>
-              </>
-            ) : (
-              <>
-                <Text style={styles.pressLabel}>PRESS TO GET</Text>
-                <Text style={styles.helpText}>HELP</Text>
-              </>
-            )}
-          </LinearGradient>
-        </View>
-      </Animated.View>
-    </Pressable>
+      {/* Glow halo */}
+      <View style={styles.glowFar} />
+      <View style={styles.glowNear} />
+      <View style={styles.glowRing}>
+        <LinearGradient
+          colors={
+            colors.bg === "#1a2332"
+              ? ["#2A3A55", "#1E2E45", "#152238"]
+              : ["#1E4A88", "#143560", "#0C2348"]
+          }
+          start={{ x: 0.25, y: 0 }}
+          end={{ x: 0.75, y: 1 }}
+          style={styles.core}
+        >
+          <Text style={styles.pressLabel}>SENDING IN</Text>
+          <Text style={styles.countdownText}>{seconds}</Text>
+          <Text style={styles.tapToCancel}>CANCEL BELOW</Text>
+        </LinearGradient>
+      </View>
+    </Animated.View>
   );
 }
 
@@ -154,11 +148,9 @@ const styles = StyleSheet.create({
     borderRadius: RING / 2,
     alignItems: "center",
     justifyContent: "center",
-    // Thick vivid ring like GRIT
     borderWidth: 18,
     borderColor: "#FF4E2A",
     backgroundColor: "transparent",
-    // Soften ring edge
     shadowColor: "#FF5A28",
     shadowOpacity: 0.95,
     shadowRadius: 18,
@@ -179,23 +171,19 @@ const styles = StyleSheet.create({
     marginBottom: 2,
     textTransform: "uppercase",
   },
-  helpText: {
+  countdownText: {
     color: "#FFFFFF",
-    fontSize: 46,
+    fontSize: 90,
     fontWeight: "900",
+    lineHeight: 96,
     letterSpacing: 2,
+  },
+  tapToCancel: {
+    color: "#FFD1D1",
+    fontSize: 10,
+    fontWeight: "700",
+    letterSpacing: 1.2,
+    marginTop: 2,
     textTransform: "uppercase",
-  },
-  progressTrack: {
-    marginTop: 14,
-    width: 110,
-    height: 5,
-    borderRadius: 3,
-    backgroundColor: "rgba(255,255,255,0.22)",
-    overflow: "hidden",
-  },
-  progressFill: {
-    height: "100%",
-    backgroundColor: "#FF5A28",
   },
 });
