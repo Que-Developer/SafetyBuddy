@@ -128,9 +128,9 @@ export default function LoginScreen() {
               accessibilityLabel="Login"
             >
               {loading ? (
-                <ActivityIndicator color={colors.white} />
+                <ActivityIndicator color={colors.bg} />
               ) : (
-                <Text style={[styles.primaryBtnText, { color: colors.white }]}>Login</Text>
+                <Text style={[styles.primaryBtnText, { color: colors.bg }]}>Login</Text>
               )}
             </TouchableOpacity>
           </View>
@@ -146,7 +146,7 @@ export default function LoginScreen() {
               <View style={[styles.msSquare, { backgroundColor: "#00A4EF" }]} />
               <View style={[styles.msSquare, { backgroundColor: "#FFB900" }]} />
             </View>
-            <Text style={[styles.msText, { color: colors.white }]}>Microsoft</Text>
+            <Text style={[styles.msText, { color: colors.bg }]}>Microsoft</Text>
           </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
