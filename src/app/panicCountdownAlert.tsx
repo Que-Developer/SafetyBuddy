@@ -3,7 +3,6 @@ import { useRouter } from 'expo-router';
 import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native'; // import React naitive components
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-
 export default function Panic() {
    const router = useRouter(); // Initialize router
 

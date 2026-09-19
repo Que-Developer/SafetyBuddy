@@ -1,3 +1,7 @@
+import { CARD_SHADOW } from "@/constants/theme";
+import { useAuth } from "@/context/AuthContext";
+import { useTheme } from "@/context/ThemeContext";
+import { SAFETY_ALERTS } from "@/data/mockData";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useEffect, useRef } from "react";
@@ -10,10 +14,6 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useAuth } from "@/context/AuthContext";
-import { useTheme } from "@/context/ThemeContext";
-import { CARD_SHADOW } from "@/constants/theme";
-import { SAFETY_ALERTS } from "@/data/mockData";
 
 const ACTIONS = [
   {
@@ -72,95 +72,106 @@ export default function HomeScreen() {
   }, [slide, opacity]);
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: colors.bg }]} edges={["top"]}>
+    <SafeAreaView
+      style={[styles.safe, { backgroundColor: colors.bg }]}
+      edges={["top"]}
+    >
       <Animated.View
         style={{ flex: 1, opacity, transform: [{ translateY: slide }] }}
       >
-      <ScrollView
-        contentContainerStyle={styles.scroll}
-        showsVerticalScrollIndicator={false}
-      >
-        <Text style={[styles.brand, { color: colors.navy }]}>SafetyBuddy</Text>
-        <Text style={[styles.greeting, { color: colors.text }]}>
-          Hi, {firstName}
-        </Text>
-        <Text style={[styles.subGreeting, { color: colors.textMuted }]}>
-          You're safe on campus. Here's what's happening around you.
-        </Text>
-
-        <TouchableOpacity
-          style={[styles.sosCard, { backgroundColor: colors.danger }]}
-          activeOpacity={0.9}
-          onPress={() => router.push("/(tabs)/panic")}
+        <ScrollView
+          contentContainerStyle={styles.scroll}
+          showsVerticalScrollIndicator={false}
         >
-          <View style={styles.sosIconWrap}>
-            <Ionicons name="warning" size={22} color={colors.danger} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.sosTitle}>Emergency Hold For SOS</Text>
-            <Text style={styles.sosSub}>
-              Alert sent to trusted & security contacts
-            </Text>
-          </View>
-          <Ionicons name="chevron-forward" size={20} color="#FFF" />
-        </TouchableOpacity>
+          <Text style={[styles.brand, { color: colors.navy }]}>SafetyBuddy</Text>
+          <Text style={[styles.greeting, { color: colors.text }]}>
+            Hi, {firstName}
+          </Text>
+          <Text style={[styles.subGreeting, { color: colors.textMuted }]}>
+            You're safe on campus. Here's what's happening around you.
+          </Text>
 
-        <View style={styles.grid}>
-          {ACTIONS.map((a) => (
-            <TouchableOpacity
-              key={a.key}
-              style={[styles.actionCard, { backgroundColor: colors.card }]}
-              onPress={() => router.push(a.href as never)}
+          <TouchableOpacity
+            style={[styles.sosCard, { backgroundColor: colors.danger }]}
+            activeOpacity={0.9}
+            onPress={() => router.push("/(tabs)/panic")}
+          >
+            <View
+              style={[styles.sosIconWrap, { backgroundColor: colors.white }]}
             >
-              <Ionicons name={a.icon} size={28} color={colors.navy} />
-              <Text style={[styles.actionTitle, { color: colors.text }]}>
-                {a.title}
+              <Ionicons name="warning" size={22} color={colors.danger} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.sosTitle, { color: colors.white }]}>
+                Emergency Hold For SOS
               </Text>
-              <Text style={[styles.actionSub, { color: colors.textMuted }]}>
-                {a.sub}
+              <Text style={[styles.sosSub, { color: colors.white }]}>
+                Alert sent to trusted & security contacts
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={colors.white} />
+          </TouchableOpacity>
+
+          <View style={styles.grid}>
+            {ACTIONS.map((a) => (
+              <TouchableOpacity
+                key={a.key}
+                style={[styles.actionCard, { backgroundColor: colors.card }]}
+                onPress={() => router.push(a.href as never)}
+              >
+                <Ionicons name={a.icon} size={28} color={colors.navy} />
+                <Text style={[styles.actionTitle, { color: colors.text }]}>
+                  {a.title}
+                </Text>
+                <Text style={[styles.actionSub, { color: colors.textMuted }]}>
+                  {a.sub}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <View style={styles.alertsHeader}>
+            <Text style={[styles.alertsTitle, { color: colors.text }]}>
+              Campus alerts
+            </Text>
+            <TouchableOpacity onPress={() => router.push("/alerts")}>
+              <Text style={[styles.seeAll, { color: colors.link }]}>
+                See All
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {SAFETY_ALERTS.slice(0, 2).map((alert) => (
+            <TouchableOpacity
+              key={alert.id}
+              style={[styles.alertCard, { backgroundColor: colors.card }]}
+              onPress={() => router.push("/alerts")}
+            >
+              <Text style={[styles.alertTime, { color: colors.danger }]}>
+                {timeAgo(alert.dateTime)}
+              </Text>
+              <Text style={[styles.alertTitle, { color: colors.text }]}>
+                {alert.title}
               </Text>
             </TouchableOpacity>
           ))}
-        </View>
 
-        <View style={styles.alertsHeader}>
-          <Text style={[styles.alertsTitle, { color: colors.text }]}>
-            Campus alerts
-          </Text>
-          <TouchableOpacity onPress={() => router.push("/alerts")}>
-            <Text style={styles.seeAll}>See All</Text>
-          </TouchableOpacity>
-        </View>
-
-        {SAFETY_ALERTS.slice(0, 2).map((alert) => (
           <TouchableOpacity
-            key={alert.id}
-            style={[styles.alertCard, { backgroundColor: colors.card }]}
-            onPress={() => router.push("/alerts")}
+            style={[styles.wellness, { backgroundColor: colors.card }]}
+            onPress={() => router.push("/(tabs)/resources")}
           >
-            <Text style={styles.alertTime}>{timeAgo(alert.dateTime)}</Text>
-            <Text style={[styles.alertTitle, { color: colors.text }]}>
-              {alert.title}
-            </Text>
+            <Ionicons name="heart" size={22} color="#16A34A" />
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.wellnessTitle, { color: colors.text }]}>
+                Not feeling okay?
+              </Text>
+              <Text style={[styles.wellnessSub, { color: colors.textMuted }]}>
+                Counseling & wellness tools are here for you
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.navy} />
           </TouchableOpacity>
-        ))}
-
-        <TouchableOpacity
-          style={[styles.wellness, { backgroundColor: colors.card }]}
-          onPress={() => router.push("/(tabs)/resources")}
-        >
-          <Ionicons name="heart" size={22} color="#16A34A" />
-          <View style={{ flex: 1 }}>
-            <Text style={[styles.wellnessTitle, { color: colors.text }]}>
-              Not feeling okay?
-            </Text>
-            <Text style={[styles.wellnessSub, { color: colors.textMuted }]}>
-              Counseling & wellness tools are here for you
-            </Text>
-          </View>
-          <Ionicons name="chevron-forward" size={18} color={colors.navy} />
-        </TouchableOpacity>
-      </ScrollView>
+        </ScrollView>
       </Animated.View>
     </SafeAreaView>
   );
@@ -197,12 +208,11 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: "#FFFFFF",
     alignItems: "center",
     justifyContent: "center",
   },
-  sosTitle: { color: "#FFFFFF", fontWeight: "900", fontSize: 15 },
-  sosSub: { color: "rgba(255,255,255,0.9)", fontSize: 12, marginTop: 2 },
+  sosTitle: { fontWeight: "900", fontSize: 15 },
+  sosSub: { fontSize: 12, marginTop: 2, opacity: 0.9 },
   grid: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -226,14 +236,14 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   alertsTitle: { fontWeight: "900", fontSize: 18 },
-  seeAll: { color: "#16A34A", fontWeight: "800", fontSize: 13 },
+  seeAll: { fontWeight: "800", fontSize: 13 },
   alertCard: {
     borderRadius: 14,
     padding: 14,
     marginBottom: 10,
     ...CARD_SHADOW,
   },
-  alertTime: { color: "#E63946", fontWeight: "700", fontSize: 12, marginBottom: 4 },
+  alertTime: { fontWeight: "700", fontSize: 12, marginBottom: 4 },
   alertTitle: { fontWeight: "800", fontSize: 15 },
   wellness: {
     marginTop: 6,

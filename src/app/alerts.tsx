@@ -1,3 +1,6 @@
+import { ALERT_LEVEL_COLORS } from "@/constants/theme";
+import { useTheme } from "@/context/ThemeContext";
+import { SAFETY_ALERTS, type SafetyAlert } from "@/data/mockData";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useEffect, useRef } from "react";
@@ -10,9 +13,6 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { ALERT_LEVEL_COLORS } from "@/constants/theme";
-import { useTheme } from "@/context/ThemeContext";
-import { SAFETY_ALERTS, type SafetyAlert } from "@/data/mockData";
 
 function AlertCard({
   alert,
@@ -30,7 +30,9 @@ function AlertCard({
             { backgroundColor: ALERT_LEVEL_COLORS[alert.alertLevel] },
           ]}
         >
-          <Text style={styles.levelBadgeText}>{alert.alertLevel}</Text>
+          <Text style={[styles.levelBadgeText, { color: colors.bg }]}> 
+            {alert.alertLevel}
+          </Text>
         </View>
         <Text style={[styles.alertMeta, { color: colors.textMuted }]}>
           {alert.dateTime}
@@ -39,7 +41,10 @@ function AlertCard({
       <Text style={[styles.alertTitle, { color: colors.text }]}>
         {alert.title}
       </Text>
-      <Text style={[styles.metaText, { color: colors.textMuted }]} numberOfLines={1}>
+      <Text
+        style={[styles.metaText, { color: colors.textMuted }]}
+        numberOfLines={1}
+      >
         {alert.affectedArea}
       </Text>
     </View>
@@ -67,7 +72,10 @@ export default function AlertsScreen() {
   }, [slide, opacity]);
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: colors.bg }]} edges={["bottom"]}>
+    <SafeAreaView
+      style={[styles.safe, { backgroundColor: colors.bg }]}
+      edges={["bottom"]}
+    >
       <Animated.View
         style={{ flex: 1, opacity, transform: [{ translateY: slide }] }}
       >
@@ -79,6 +87,7 @@ export default function AlertsScreen() {
             <AlertCard key={alert.id} alert={alert} colors={colors} />
           ))}
 
+          {/* Support link — uses a fixed green because it's a wellness/safety color */}
           <TouchableOpacity
             style={styles.supportLink}
             onPress={() => router.push("/support")}
@@ -113,7 +122,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 999,
   },
-  levelBadgeText: { color: "#0A0A3D", fontSize: 11, fontWeight: "800" },
+  levelBadgeText: { fontSize: 11, fontWeight: "800" },
   alertMeta: { fontSize: 12 },
   alertTitle: {
     fontWeight: "800",
@@ -125,7 +134,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    backgroundColor: "#16A34A",
+    backgroundColor: "#16A34A", // stays green (wellness/support = safe color)
     borderRadius: 16,
     padding: 16,
     marginTop: 8,

@@ -1,12 +1,13 @@
+import { ThemeProvider, useTheme } from "@/context/ThemeContext";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { Tabs } from "expo-router";
 import { StyleSheet, View } from "react-native";
-import Ionicons from "@expo/vector-icons/Ionicons";
-import { useTheme } from "@/context/ThemeContext";
 
 export default function TabsLayout() {
   const { colors } = useTheme();
 
   return (
+    <ThemeProvider>
     <Tabs
       screenOptions={{
         headerStyle: { backgroundColor: colors.bg },
@@ -18,7 +19,7 @@ export default function TabsLayout() {
         tabBarStyle: {
           backgroundColor: colors.bg,
           borderTopWidth: StyleSheet.hairlineWidth,
-          borderTopColor: colors.tileBorder,
+          borderTopColor: colors.cardAlt,
           height: 72,
           paddingBottom: 8,
           paddingTop: 6,
@@ -103,6 +104,7 @@ export default function TabsLayout() {
         options={{ href: null, title: "Resources" }}
       />
     </Tabs>
+    </ThemeProvider>
   );
 }
 

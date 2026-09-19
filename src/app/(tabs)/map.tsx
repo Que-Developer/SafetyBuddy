@@ -1,30 +1,26 @@
+import { CampusMap, type MapEvent } from "@/components/CampusMap";
+import { CARD_SHADOW } from "@/constants/theme";
+import { useTheme } from "@/context/ThemeContext";
+import {
+  CAMPUS_DESTINATIONS,
+  MAP_WALK_CONTACTS,
+  type MapLayerKey
+} from "@/data/mapData";
+import { loadTrustedContacts } from "@/services/contacts";
 import { Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
-import { router } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
-  Dimensions,
   Modal,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { CampusMap, type MapEvent } from "@/components/CampusMap";
-import { CARD_SHADOW } from "@/constants/theme";
-import { useTheme } from "@/context/ThemeContext";
-import {
-  CAMPUS_DESTINATIONS,
-  MAP_LAYERS,
-  MAP_WALK_CONTACTS,
-  type MapLayerKey,
-} from "@/data/mapData";
-import { loadTrustedContacts } from "@/services/contacts";
-import { WALK_WITH_ME_USE_CASE } from "@/data/walkWithMeUseCase";
 
 type LatLng = { lat: number; lng: number };
 
@@ -39,11 +35,7 @@ export default function MapScreen() {
   const [pendingDestination, setPendingDestination] = useState<{name: string, lat: number, lng: number} | null>(null);
   
   const [activeLayers, setActiveLayers] = useState<MapLayerKey[]>([
-    "danger",
-    "security",
-    "emergency",
-    "firstAid",
-    "safeZone",
+    "danger", "security", "emergency", "firstAid", "safeZone",
   ]);
   const [pickMode, setPickMode] = useState<"start" | "end" | null>(null);
   const [start, setStart] = useState<LatLng | null>(null);
@@ -70,7 +62,7 @@ export default function MapScreen() {
     return () => clearTimeout(t);
   }, [followLive]);
 
-  // ETA countdown — if time runs out without "I arrived safely", alert contacts
+  // ETA countdown
   useEffect(() => {
     if (!walkActive || secondsLeft <= 0) return;
     const t = setTimeout(() => setSecondsLeft((s) => s - 1), 1000);
@@ -168,7 +160,6 @@ export default function MapScreen() {
 
   const selectedContact = contacts.find((c) => c.id === contactId);
 
-  // Helper to calculate ETA based on distance (approx walking speed 1.4 m/s)
   const calculateETA = (startPoint: LatLng, endPoint: LatLng) => {
     const R = 6371e3;
     const φ1 = (startPoint.lat * Math.PI) / 180;
@@ -337,7 +328,6 @@ export default function MapScreen() {
       </View>
 
       <SafeAreaView style={styles.overlay} edges={["top"]} pointerEvents="box-none">
-        {/* Top row now only contains the Search button on the right */}
         <View style={styles.topRow} pointerEvents="box-none">
           <View style={styles.topRightStack}>
             <TouchableOpacity
@@ -466,12 +456,12 @@ export default function MapScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#002B5B' },
+  root: { flex: 1, backgroundColor: "#1a2332" },
   mapFull: { ...StyleSheet.absoluteFill },
   overlay: {
     ...StyleSheet.absoluteFill,
     bottom: undefined,
-    height: '58%',
+    height: "58%",
   },
   topRow: {
     flexDirection: 'row',
@@ -485,14 +475,13 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     ...CARD_SHADOW,
   },
   roundBtn2: {
     width: 44,
     height: 44,
-    top: 300,
     borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
@@ -500,10 +489,10 @@ const styles = StyleSheet.create({
   },
   // Lowered to the bottom right corner
   sideStack: {
-    position: 'absolute',
+    position: "absolute",
     right: 14,
-    bottom: 0, // Anchors to the very bottom
-    paddingBottom: 16, // Adds a little breathing room from the edge
+    bottom: 0,
+    paddingBottom: 16,
     gap: 10,
     justifyContent: 'flex-end',
   },

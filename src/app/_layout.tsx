@@ -1,14 +1,14 @@
-import { Stack } from "expo-router";
-import { StatusBar } from "expo-status-bar";
-import { LogBox } from "react-native";
 import { AuthGate } from "@/components/AuthGate";
 import { AuthProvider } from "@/context/AuthContext";
 import { ThemeProvider, useTheme } from "@/context/ThemeContext";
+import { Stack } from "expo-router";
+import { StatusBar } from "expo-status-bar";
+import { LogBox } from "react-native";
 
 LogBox.ignoreAllLogs(true);
 
 function RootStack() {
-  const { colors, mode } = useTheme();
+  const { colors } = useTheme();
   const headerOpts = {
     headerStyle: { backgroundColor: colors.bg },
     headerTintColor: colors.navy,
@@ -18,7 +18,7 @@ function RootStack() {
 
   return (
     <>
-      <StatusBar style={mode === "navy" ? "light" : "dark"} />
+      <StatusBar style={colors.bg === colors.navy ? "light" : "dark"} />
       <AuthGate>
         <Stack>
           <Stack.Screen name="index" options={{ headerShown: false }} />
