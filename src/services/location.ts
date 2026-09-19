@@ -11,10 +11,10 @@ export type SharedLocation = {
 };
 
 const FALLBACK: SharedLocation = {
-  latitude: -33.9617,
-  longitude: 25.6147,
+  latitude: -34.0042,
+  longitude: 25.6702,
   accuracy: null,
-  label: "South Campus — Library steps (fallback)",
+  label: "NMU South Campus — Library steps (fallback)",
   zoneId: "ZN-2",
   updatedAt: new Date().toISOString(),
   source: "fallback",
