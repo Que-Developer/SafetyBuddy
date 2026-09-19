@@ -1,6 +1,5 @@
-import React from "react";
-import { StyleProp, View, ViewStyle } from "react-native";
-import { useTheme } from "@/context/ThemeContext";
+import React from 'react';
+import { StyleProp, View, ViewStyle } from 'react-native';
 
 type Props = {
   children: React.ReactNode;
@@ -8,23 +7,10 @@ type Props = {
   radius?: number;
 };
 
-export function GlassPanel({ children, style, radius = 14 }: Props) {
-  const { colors } = useTheme();
-
+export default function GlassPanel({ children, style }: Props) {
   return (
-    <View
-      style={[
-        {
-          borderRadius: radius,
-          backgroundColor: colors.card,
-          overflow: "hidden",
-        },
-        style,
-      ]}
-    >
+    <View style={[{ borderRadius: 14, backgroundColor: '#fce07a', overflow: 'hidden' }, style]}>
       {children}
     </View>
   );
 }
-
-export default GlassPanel;

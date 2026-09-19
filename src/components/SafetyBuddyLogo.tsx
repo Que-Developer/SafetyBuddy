@@ -1,23 +1,13 @@
-import {
-  StyleSheet,
-  Text,
-  View,
-  type StyleProp,
-  type ViewStyle,
-} from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import { COLORS } from "@/constants/theme";
 
-type Props = {
-  size?: "xs" | "sm" | "md" | "lg";
-  style?: StyleProp<ViewStyle>;
-};
+type Props = { size?: "sm" | "md" | "lg" };
 
-export function SafetyBuddyLogo({ size = "lg", style }: Props) {
-  const scale =
-    size === "xs" ? 0.35 : size === "sm" ? 0.55 : size === "md" ? 0.75 : 1;
+export function SafetyBuddyLogo({ size = "lg" }: Props) {
+  const scale = size === "sm" ? 0.55 : size === "md" ? 0.75 : 1;
 
   return (
-    <View style={[styles.frame, { transform: [{ scale }] }, style]}>
+    <View style={[styles.frame, { transform: [{ scale }] }]}>
       <View style={styles.shield}>
         <Text style={styles.safety}>SAFETY</Text>
         <Text style={styles.buddy}>BUDDY</Text>

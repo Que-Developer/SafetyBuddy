@@ -19,8 +19,6 @@ const YELLOW_THEME = {
   tile: '#FFFFFF',
   tileBorder: 'rgba(0,4,88,0.1)',
   bgDeep: '#000458',
-  caution: '#F59E0B',
-  success: '#22C55E',
 };
 
 const DARK_THEME = {
@@ -37,8 +35,6 @@ const DARK_THEME = {
   tile: '#23304a',
   tileBorder: 'rgba(255,255,255,0.1)',
   bgDeep: '#1a2332',
-  caution: '#F59E0B',
-  success: '#22C55E',
 };
 
 
