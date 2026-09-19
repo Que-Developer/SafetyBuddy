@@ -26,7 +26,7 @@ const ACTIONS = [
   {
     key: "contacts",
     title: "Contacts",
-    sub: "Trusted circle",
+    sub: "Manage contacts",
     icon: "call" as const,
     href: "/(tabs)/profile",
   },

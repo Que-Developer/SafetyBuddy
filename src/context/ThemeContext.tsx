@@ -135,7 +135,7 @@ type ThemeContextValue = {
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [mode, setModeState] = useState<ThemeMode>("yellow");
+  const [mode, setModeState] = useState<ThemeMode>("navy");
   const [hasChosen, setHasChosen] = useState(false);
   const [ready, setReady] = useState(false);
 

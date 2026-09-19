@@ -15,7 +15,8 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { CampusMap, type MapEvent } from "@/components/CampusMap";
-import { CARD_SHADOW, COLORS } from "@/constants/theme";
+import { CARD_SHADOW } from "@/constants/theme";
+import { useTheme } from "@/context/ThemeContext";
 import {
   CAMPUS_DESTINATIONS,
   MAP_LAYERS,
@@ -26,24 +27,17 @@ import { loadTrustedContacts } from "@/services/contacts";
 import { WALK_WITH_ME_USE_CASE } from "@/data/walkWithMeUseCase";
 
 type LatLng = { lat: number; lng: number };
-type SheetTab = "people" | "walk" | "places" | "layers";
+type SheetTab = "walk" | "places" | "layers";
 
 const ETA_OPTIONS = [5, 10, 15, 20];
-const ACCENT = COLORS.navy;
 const SCREEN_H = Dimensions.get("window").height;
 const SHEET_MIN = 120;
 const SHEET_MAX = Math.round(SCREEN_H * 0.52);
 const SHEET_COLLAPSED = 150;
 
-const PLACE_HINTS = [
-  "Near Library",
-  "Student Centre",
-  "North Residence",
-  "Main Gate",
-  "Science Building",
-];
-
 export default function MapScreen() {
+  const { colors } = useTheme();
+  const ACCENT = colors.accent;
   const [mode, setMode] = useState<"2d" | "3d">("2d");
   const [base, setBase] = useState<"street" | "satellite">("street");
   const [query, setQuery] = useState("");
@@ -55,7 +49,7 @@ export default function MapScreen() {
     "firstAid",
     "safeZone",
   ]);
-  const [sheetTab, setSheetTab] = useState<SheetTab>("people");
+  const [sheetTab, setSheetTab] = useState<SheetTab>("walk");
   const [pickMode, setPickMode] = useState<"start" | "end" | null>(null);
   const [start, setStart] = useState<LatLng | null>(null);
   const [end, setEnd] = useState<LatLng | null>(null);
@@ -72,7 +66,6 @@ export default function MapScreen() {
   const [gpsStatus, setGpsStatus] = useState<"pending" | "on" | "off">("pending");
   const [followLive, setFollowLive] = useState(false);
   const [status, setStatus] = useState("Sharing live campus location");
-  const [checkedIn, setCheckedIn] = useState(false);
   const [sheetHeight, setSheetHeight] = useState(SHEET_MAX);
   const sheetHeightRef = useRef(SHEET_MAX);
   const dragStart = useRef(SHEET_MAX);
@@ -367,29 +360,21 @@ export default function MapScreen() {
       <SafeAreaView style={styles.overlay} edges={["top"]} pointerEvents="box-none">
         <View style={styles.topRow} pointerEvents="box-none">
           <TouchableOpacity
-            style={styles.roundBtn}
+            style={[styles.roundBtn, { backgroundColor: colors.card }]}
             onPress={() => router.push("/(tabs)/profile")}
           >
             <Ionicons name="settings-outline" size={20} color={ACCENT} />
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.groupPill}
-            onPress={() => setSheetTab("people")}
-          >
-            <Text style={styles.groupPillText}>Trusted circle</Text>
-            <Ionicons name="chevron-down" size={16} color={ACCENT} />
-          </TouchableOpacity>
-
           <View style={styles.topRightStack}>
             <TouchableOpacity
-              style={styles.roundBtn}
+              style={[styles.roundBtn, { backgroundColor: colors.card }]}
               onPress={() => router.push("/alerts")}
             >
               <Ionicons name="mail-outline" size={18} color={ACCENT} />
             </TouchableOpacity>
             <TouchableOpacity
-              style={styles.roundBtn}
+              style={[styles.roundBtn, { backgroundColor: colors.card }]}
               onPress={() => setShowSearch((v) => !v)}
             >
               <Ionicons name="search" size={18} color={ACCENT} />
@@ -398,11 +383,11 @@ export default function MapScreen() {
         </View>
 
         {showSearch && (
-          <View style={styles.searchCard}>
+          <View style={[styles.searchCard, { backgroundColor: colors.card }]}>
             <TextInput
-              style={styles.searchInput}
+              style={[styles.searchInput, { color: colors.text, borderBottomColor: colors.tileBorder }]}
               placeholder="Where to?"
-              placeholderTextColor="#8A8A9A"
+              placeholderTextColor={colors.textDim}
               value={query}
               onChangeText={setQuery}
               autoFocus
@@ -410,11 +395,11 @@ export default function MapScreen() {
             {filteredDestinations.map((d) => (
               <TouchableOpacity
                 key={d.id}
-                style={styles.searchItem}
+                style={[styles.searchItem, { borderBottomColor: colors.tileBorder }]}
                 onPress={() => chooseDestination(d.name, d.lat, d.lng)}
               >
-                <Text style={styles.searchTitle}>{d.name}</Text>
-                <Text style={styles.searchSub}>{d.description}</Text>
+                <Text style={[styles.searchTitle, { color: colors.text }]}>{d.name}</Text>
+                <Text style={[styles.searchSub, { color: colors.textMuted }]}>{d.description}</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -422,16 +407,13 @@ export default function MapScreen() {
 
         <View style={styles.sideStack} pointerEvents="box-none">
           <TouchableOpacity
-            style={styles.roundBtn}
-            onPress={() => {
-              setSheetTab("people");
-              setStatus("Add someone from your trusted contacts");
-            }}
+            style={[styles.roundBtn, { backgroundColor: colors.card }]}
+            onPress={() => router.push("/(tabs)/profile")}
           >
-            <Ionicons name="add" size={22} color={ACCENT} />
+            <Ionicons name="person-add-outline" size={20} color={ACCENT} />
           </TouchableOpacity>
           <TouchableOpacity
-            style={styles.roundBtn}
+            style={[styles.roundBtn, { backgroundColor: colors.card }]}
             onPress={() => {
               if (live) {
                 setFollowLive(true);
@@ -442,7 +424,7 @@ export default function MapScreen() {
             <Ionicons name="locate" size={20} color={ACCENT} />
           </TouchableOpacity>
           <TouchableOpacity
-            style={styles.roundBtn}
+            style={[styles.roundBtn, { backgroundColor: colors.card }]}
             onPress={() => {
               if (mode === "3d") {
                 setMode("2d");
@@ -457,43 +439,13 @@ export default function MapScreen() {
             <Ionicons name="layers-outline" size={20} color={ACCENT} />
           </TouchableOpacity>
         </View>
-
-        <View style={styles.actionRow} pointerEvents="box-none">
-          <TouchableOpacity
-            style={styles.actionPill}
-            onPress={() => {
-              setCheckedIn(true);
-              setStatus(
-                gpsStatus === "on"
-                  ? "Checked in · live location shared"
-                  : "Checked in · waiting for GPS"
-              );
-            }}
-          >
-            <View style={styles.actionIcon}>
-              <Ionicons name="checkmark" size={16} color={COLORS.white} />
-            </View>
-            <Text style={styles.actionText}>
-              {checkedIn ? "Checked in" : "Check in"}
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.actionPill}
-            onPress={() => router.push("/(tabs)/panic")}
-          >
-            <View style={[styles.actionIcon, { backgroundColor: COLORS.danger }]}>
-              <Ionicons name="radio-button-on" size={14} color={COLORS.white} />
-            </View>
-            <Text style={styles.actionText}>Set Up SOS</Text>
-          </TouchableOpacity>
-        </View>
       </SafeAreaView>
 
-      <View style={[styles.sheet, { height: sheetHeight, backgroundColor: COLORS.bg }]}>
+      <View style={[styles.sheet, { height: sheetHeight, backgroundColor: colors.bg }]}>
         <View {...panResponder.panHandlers} style={styles.sheetDragZone}>
-          <View style={styles.handle} />
+          <View style={[styles.handle, { backgroundColor: colors.tileBorder }]} />
           <View style={styles.sheetTitleRow}>
-            <Text style={styles.sheetTitle}>Trusted circle</Text>
+            <Text style={[styles.sheetTitle, { color: colors.text }]}>Walk With Me</Text>
             <TouchableOpacity
               onPress={() =>
                 setSheetHeight((h) => {
@@ -518,7 +470,6 @@ export default function MapScreen() {
         <View style={styles.segRow}>
           {(
             [
-              ["people", "people"],
               ["walk", "walk"],
               ["places", "business"],
               ["layers", "layers"],
@@ -528,13 +479,17 @@ export default function MapScreen() {
             return (
               <TouchableOpacity
                 key={key}
-                style={[styles.segBtn, on && styles.segBtnOn]}
+                style={[
+                  styles.segBtn,
+                  { backgroundColor: colors.card, borderColor: colors.tileBorder },
+                  on && { backgroundColor: colors.accent, borderColor: colors.accent },
+                ]}
                 onPress={() => setSheetTab(key)}
               >
                 <Ionicons
                   name={icon}
                   size={20}
-                  color={on ? COLORS.white : COLORS.text}
+                  color={on ? colors.bg : colors.text}
                 />
               </TouchableOpacity>
             );
@@ -546,94 +501,58 @@ export default function MapScreen() {
           contentContainerStyle={{ paddingBottom: 24 }}
           showsVerticalScrollIndicator={false}
         >
-          {sheetTab === "people" && (
-            <View style={styles.listCard}>
-              {contacts.map((c, i) => {
-                const selected = contactId === c.id;
-                return (
-                  <TouchableOpacity
-                    key={c.id}
-                    style={[styles.personRow, selected && styles.personRowOn]}
-                    onPress={() => {
-                      setContactId(c.id);
-                      setStatus(`Watching ${c.name}`);
-                    }}
-                  >
-                    <View>
-                      <View style={[styles.avatar, { backgroundColor: c.color }]}>
-                        <Text style={styles.avatarText}>{c.initial}</Text>
-                      </View>
-                      <View style={styles.battPill}>
-                        <Ionicons
-                          name="battery-half"
-                          size={10}
-                          color={c.battery < 20 ? "#DC2626" : "#16A34A"}
-                        />
-                        <Text style={styles.battText}>{c.battery}%</Text>
-                      </View>
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.personName}>{c.name}</Text>
-                      {c.online ? (
-                        <>
-                          <Text style={styles.personPlace}>
-                            {PLACE_HINTS[i % PLACE_HINTS.length]}
-                          </Text>
-                          <Text style={styles.personSince}>
-                            Since {16 + (i % 4)}:{30 + i * 3} today
-                          </Text>
-                        </>
-                      ) : (
-                        <Text style={styles.personOffline}>
-                          No network or phone off
-                        </Text>
-                      )}
-                    </View>
-                    {!c.online && (
-                      <Ionicons name="ban" size={22} color="#DC2626" />
-                    )}
-                  </TouchableOpacity>
-                );
-              })}
-              <TouchableOpacity
-                style={styles.addPerson}
-                onPress={() => router.push("/(tabs)/profile")}
-              >
-                <Text style={styles.addPersonText}>Add a person</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-
           {sheetTab === "walk" && (
-            <View style={styles.listCard}>
-              <Text style={styles.hint}>{status}</Text>
+            <View style={[styles.listCard, { backgroundColor: colors.cardAlt }]}>
+              <Text style={[styles.hint, { color: colors.textMuted }]}>{status}</Text>
               <TouchableOpacity
-                style={[styles.pointCard, pickMode === "start" && styles.pointOn]}
+                style={[
+                  styles.pointCard,
+                  { backgroundColor: colors.card },
+                  pickMode === "start" && styles.pointOn,
+                ]}
                 onPress={() => setPickMode("start")}
               >
                 <Ionicons name="locate" size={18} color={ACCENT} />
-                <Text style={styles.pointText}>{startLabel}</Text>
+                <Text style={[styles.pointText, { color: colors.text }]}>{startLabel}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.myLoc} onPress={useMyLocationAsStart}>
                 <Ionicons name="navigate-circle" size={18} color={ACCENT} />
-                <Text style={styles.myLocText}>Use my live location as start</Text>
+                <Text style={[styles.myLocText, { color: colors.navy }]}>
+                  Use my live location as start
+                </Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.pointCard, pickMode === "end" && styles.pointOn]}
+                style={[
+                  styles.pointCard,
+                  { backgroundColor: colors.card },
+                  pickMode === "end" && styles.pointOn,
+                ]}
                 onPress={() => setPickMode("end")}
               >
                 <Ionicons name="flag" size={18} color={ACCENT} />
-                <Text style={styles.pointText}>{endLabel}</Text>
+                <Text style={[styles.pointText, { color: colors.text }]}>{endLabel}</Text>
               </TouchableOpacity>
-              <Text style={styles.label}>Estimated arrival</Text>
+              <Text style={[styles.label, { color: colors.textMuted }]}>
+                Estimated arrival
+              </Text>
               <View style={styles.etaRow}>
                 {ETA_OPTIONS.map((m) => (
                   <TouchableOpacity
                     key={m}
-                    style={[styles.etaChip, eta === m && styles.etaOn]}
+                    style={[
+                      styles.etaChip,
+                      { backgroundColor: colors.card },
+                      eta === m && { backgroundColor: colors.accent },
+                    ]}
                     onPress={() => setEta(m)}
                   >
-                    <Text style={[styles.etaText, eta === m && styles.etaTextOn]}>
+                    <Text
+                      style={[
+                        styles.etaText,
+                        { color: colors.text },
+                        eta === m && { color: colors.bg },
+                      ]}
+                    >
                       {m} min
                     </Text>
                   </TouchableOpacity>
@@ -641,12 +560,15 @@ export default function MapScreen() {
               </View>
               {walkActive && (
                 <>
-                  <View style={styles.progressWrap}>
+                  <View style={[styles.progressWrap, { backgroundColor: colors.card }]}>
                     <View
-                      style={[styles.progressFill, { width: `${progress * 100}%` }]}
+                      style={[
+                        styles.progressFill,
+                        { width: `${progress * 100}%`, backgroundColor: colors.accent },
+                      ]}
                     />
                   </View>
-                  <Text style={styles.countdown}>
+                  <Text style={[styles.countdown, { color: colors.navy }]}>
                     Time left to arrive: {formatCountdown(secondsLeft)}
                   </Text>
                 </>
@@ -654,22 +576,31 @@ export default function MapScreen() {
               {walkActive ? (
                 <>
                   <TouchableOpacity
-                    style={styles.arrivedBtn}
+                    style={[styles.arrivedBtn, { backgroundColor: colors.success }]}
                     onPress={markArrivedSafely}
                   >
-                    <Text style={styles.arrivedBtnText}>I arrived safely</Text>
+                    <Text style={[styles.arrivedBtnText, { color: colors.white }]}>
+                      I arrived safely
+                    </Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={styles.demoBtn} onPress={cancelWalk}>
-                    <Text style={styles.demoBtnText}>Cancel walk</Text>
+                    <Text style={[styles.demoBtnText, { color: colors.textMuted }]}>
+                      Cancel walk
+                    </Text>
                   </TouchableOpacity>
                 </>
               ) : (
                 <>
-                  <TouchableOpacity style={styles.primaryBtn} onPress={startWalk}>
-                    <Text style={styles.primaryText}>Start Walk With Me</Text>
+                  <TouchableOpacity
+                    style={[styles.primaryBtn, { backgroundColor: colors.accent }]}
+                    onPress={startWalk}
+                  >
+                    <Text style={[styles.primaryText, { color: colors.bg }]}>
+                      Start Walk With Me
+                    </Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={styles.demoBtn} onPress={runPresetWalk}>
-                    <Text style={styles.demoBtnText}>
+                    <Text style={[styles.demoBtnText, { color: colors.textMuted }]}>
                       Run walk (Library → North Res)
                     </Text>
                   </TouchableOpacity>
@@ -679,19 +610,21 @@ export default function MapScreen() {
           )}
 
           {sheetTab === "places" && (
-            <View style={styles.listCard}>
+            <View style={[styles.listCard, { backgroundColor: colors.cardAlt }]}>
               {CAMPUS_DESTINATIONS.map((d) => (
                 <TouchableOpacity
                   key={d.id}
-                  style={styles.personRow}
+                  style={[styles.personRow, { borderBottomColor: colors.tileBorder }]}
                   onPress={() => chooseDestination(d.name, d.lat, d.lng)}
                 >
-                  <View style={[styles.avatar, { backgroundColor: COLORS.bg }]}>
+                  <View style={[styles.avatar, { backgroundColor: colors.bg }]}>
                     <Ionicons name="location" size={20} color={ACCENT} />
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.personName}>{d.name}</Text>
-                    <Text style={styles.personPlace}>{d.description}</Text>
+                    <Text style={[styles.personName, { color: colors.text }]}>{d.name}</Text>
+                    <Text style={[styles.personPlace, { color: colors.textMuted }]}>
+                      {d.description}
+                    </Text>
                   </View>
                 </TouchableOpacity>
               ))}
@@ -699,8 +632,8 @@ export default function MapScreen() {
           )}
 
           {sheetTab === "layers" && (
-            <View style={styles.listCard}>
-              <Text style={styles.hint}>
+            <View style={[styles.listCard, { backgroundColor: colors.cardAlt }]}>
+              <Text style={[styles.hint, { color: colors.textMuted }]}>
                 Map: {mode === "3d" ? "3D" : base === "satellite" ? "Satellite" : "Street"}
               </Text>
               <View style={styles.chips}>
@@ -709,13 +642,19 @@ export default function MapScreen() {
                   return (
                     <TouchableOpacity
                       key={layer.key}
-                      style={[styles.chip, on && styles.chipOn]}
+                      style={[
+                        styles.chip,
+                        { backgroundColor: colors.card },
+                        on && { borderColor: colors.accent, borderWidth: 1.5 },
+                      ]}
                       onPress={() => toggleLayer(layer.key)}
                     >
                       <View
                         style={[styles.chipDot, { backgroundColor: layer.color }]}
                       />
-                      <Text style={styles.chipText}>{layer.label}</Text>
+                      <Text style={[styles.chipText, { color: colors.text }]}>
+                        {layer.label}
+                      </Text>
                     </TouchableOpacity>
                   );
                 })}
@@ -731,17 +670,17 @@ export default function MapScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: COLORS.bg },
+  root: { flex: 1, backgroundColor: '#002B5B' },
   mapFull: { ...StyleSheet.absoluteFill },
   overlay: {
     ...StyleSheet.absoluteFill,
     bottom: undefined,
-    height: "58%",
+    height: '58%',
   },
   topRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    justifyContent: "space-between",
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
     paddingHorizontal: 14,
     paddingTop: 4,
   },
@@ -750,83 +689,37 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: COLORS.white,
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: 'center',
+    justifyContent: 'center',
     ...CARD_SHADOW,
   },
-  groupPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: COLORS.white,
-    borderRadius: 999,
-    paddingHorizontal: 18,
-    paddingVertical: 12,
-    ...CARD_SHADOW,
-  },
-  groupPillText: { color: ACCENT, fontWeight: "800", fontSize: 15 },
   searchCard: {
     marginHorizontal: 14,
     marginTop: 10,
-    backgroundColor: COLORS.white,
     borderRadius: 16,
-    overflow: "hidden",
+    overflow: 'hidden',
     ...CARD_SHADOW,
   },
   searchInput: {
     paddingHorizontal: 14,
     paddingVertical: 12,
-    color: COLORS.text,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#E5E7EB",
   },
   searchItem: {
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#F1F1F1",
   },
-  searchTitle: { fontWeight: "800", color: COLORS.text },
-  searchSub: { color: COLORS.textMuted, fontSize: 12, marginTop: 2 },
+  searchTitle: { fontWeight: '800' },
+  searchSub: { fontSize: 12, marginTop: 2 },
   sideStack: {
-    position: "absolute",
+    position: 'absolute',
     right: 14,
-    bottom: 70,
-    gap: 10,
-  },
-  actionRow: {
-    position: "absolute",
-    left: 14,
-    right: 70,
     bottom: 16,
-    flexDirection: "row",
     gap: 10,
   },
-  actionPill: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    backgroundColor: COLORS.white,
-    borderRadius: 999,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderWidth: 1.5,
-    borderColor: ACCENT,
-    ...CARD_SHADOW,
-  },
-  actionIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: ACCENT,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  actionText: { color: ACCENT, fontWeight: "800", fontSize: 13 },
   sheet: {
-    position: "absolute",
+    position: 'absolute',
     left: 0,
     right: 0,
     bottom: 72,
@@ -841,175 +734,123 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
   },
   handle: {
-    alignSelf: "center",
+    alignSelf: 'center',
     width: 42,
     height: 4,
     borderRadius: 2,
-    backgroundColor: "rgba(0,43,91,0.25)",
     marginBottom: 8,
   },
   sheetTitleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: 4,
   },
   sheetTitle: {
-    color: COLORS.text,
-    fontWeight: "900",
+    fontWeight: '900',
     fontSize: 26,
   },
-  segRow: { flexDirection: "row", gap: 10, marginBottom: 14 },
+  segRow: { flexDirection: 'row', gap: 10, marginBottom: 14 },
   segBtn: {
     flex: 1,
     height: 48,
     borderRadius: 14,
-    backgroundColor: COLORS.white,
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 1,
-    borderColor: "#E8E8EE",
     ...CARD_SHADOW,
-  },
-  segBtnOn: {
-    backgroundColor: "#1F1F2E",
-    borderColor: "#1F1F2E",
   },
   sheetScroll: { flex: 1 },
   listCard: {
-    backgroundColor: "#F7F7F9",
     borderRadius: 22,
     padding: 12,
   },
   personRow: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 12,
     paddingVertical: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#E5E7EB",
-  },
-  personRowOn: {
-    backgroundColor: "rgba(0,43,91,0.06)",
-    borderRadius: 14,
-    paddingHorizontal: 8,
   },
   avatar: {
     width: 52,
     height: 52,
     borderRadius: 26,
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  avatarText: { color: COLORS.navy, fontWeight: "900", fontSize: 18 },
-  battPill: {
-    position: "absolute",
-    bottom: -4,
-    alignSelf: "center",
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 2,
-    backgroundColor: COLORS.white,
-    borderRadius: 999,
-    paddingHorizontal: 5,
-    paddingVertical: 2,
-    ...CARD_SHADOW,
-  },
-  battText: { fontSize: 9, fontWeight: "800", color: COLORS.text },
-  personName: { color: COLORS.text, fontWeight: "800", fontSize: 16 },
-  personPlace: { color: COLORS.textMuted, fontSize: 13, marginTop: 2 },
-  personSince: { color: "#9CA3AF", fontSize: 12, marginTop: 2 },
-  personOffline: { color: "#DC2626", fontWeight: "700", fontSize: 13, marginTop: 2 },
-  addPerson: {
-    marginTop: 12,
-    backgroundColor: "#E8E8EE",
-    borderRadius: 14,
-    paddingVertical: 14,
-    alignItems: "center",
-  },
-  addPersonText: { color: COLORS.text, fontWeight: "800", fontSize: 15 },
-  hint: { color: COLORS.textMuted, fontSize: 13, marginBottom: 10, lineHeight: 18 },
+  personName: { fontWeight: '800', fontSize: 16 },
+  personPlace: { fontSize: 13, marginTop: 2 },
+  hint: { fontSize: 13, marginBottom: 10, lineHeight: 18 },
   pointCard: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 10,
-    backgroundColor: COLORS.white,
     borderRadius: 12,
     padding: 12,
     marginBottom: 8,
     borderWidth: 2,
-    borderColor: "transparent",
+    borderColor: 'transparent',
   },
-  pointOn: { borderColor: ACCENT },
-  pointText: { flex: 1, color: COLORS.text, fontWeight: "700", fontSize: 13 },
+  pointOn: { borderColor: '#FFD24C' },
+  pointText: { flex: 1, fontWeight: '700', fontSize: 13 },
   myLoc: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 8,
     marginBottom: 10,
   },
-  myLocText: { color: ACCENT, fontWeight: "800", fontSize: 12 },
-  label: { color: ACCENT, fontWeight: "800", fontSize: 12, marginBottom: 8 },
-  etaRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 12 },
+  myLocText: { fontWeight: '800', fontSize: 12 },
+  label: { fontWeight: '800', fontSize: 12, marginBottom: 8 },
+  etaRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
   etaChip: {
-    backgroundColor: COLORS.white,
     borderRadius: 999,
     paddingHorizontal: 14,
     paddingVertical: 8,
   },
-  etaOn: { backgroundColor: ACCENT },
-  etaText: { color: ACCENT, fontWeight: "800", fontSize: 12 },
-  etaTextOn: { color: COLORS.white },
+  etaText: { fontWeight: '800', fontSize: 12 },
   progressWrap: {
     height: 8,
     borderRadius: 4,
-    backgroundColor: "#E5E7EB",
-    overflow: "hidden",
+    overflow: 'hidden',
     marginBottom: 12,
   },
-  progressFill: { height: "100%", backgroundColor: "#2563EB" },
+  progressFill: { height: '100%' },
   countdown: {
-    color: COLORS.navy,
-    fontWeight: "800",
+    fontWeight: '800',
     fontSize: 14,
-    textAlign: "center",
+    textAlign: 'center',
     marginBottom: 12,
   },
   primaryBtn: {
-    backgroundColor: ACCENT,
     borderRadius: 14,
     paddingVertical: 14,
-    alignItems: "center",
+    alignItems: 'center',
   },
-  primaryText: { color: COLORS.white, fontWeight: "900", fontSize: 15 },
+  primaryText: { fontWeight: '900', fontSize: 15 },
   arrivedBtn: {
-    backgroundColor: "#16A34A",
     borderRadius: 14,
     paddingVertical: 14,
-    alignItems: "center",
+    alignItems: 'center',
   },
-  arrivedBtnText: { color: COLORS.white, fontWeight: "900", fontSize: 15 },
+  arrivedBtnText: { fontWeight: '900', fontSize: 15 },
   demoBtn: {
     marginTop: 10,
     borderRadius: 14,
     paddingVertical: 12,
-    alignItems: "center",
-    backgroundColor: COLORS.white,
-    borderWidth: 1.5,
-    borderColor: ACCENT,
+    alignItems: 'center',
   },
-  demoBtnText: { color: ACCENT, fontWeight: "800", fontSize: 13 },
-  chips: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  demoBtnText: { fontWeight: '800', fontSize: 13 },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 8,
-    backgroundColor: COLORS.white,
     borderRadius: 14,
     paddingHorizontal: 12,
     paddingVertical: 10,
   },
-  chipOn: { borderWidth: 2, borderColor: ACCENT },
   chipDot: { width: 12, height: 12, borderRadius: 6 },
-  chipText: { color: COLORS.text, fontWeight: "700", fontSize: 12 },
+  chipText: { fontWeight: '700', fontSize: 12 },
 });
+

@@ -13,7 +13,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "@/context/AuthContext";
-import { COLORS } from "@/constants/theme";
+import { useTheme } from "@/context/ThemeContext";
 import {
   loadTrustedContacts,
   saveTrustedContacts,
@@ -22,6 +22,7 @@ import {
 
 export default function ProfileScreen() {
   const { user, logout } = useAuth();
+  const { colors } = useTheme();
   const [shareLocation, setShareLocation] = useState(true);
   const [anonReport, setAnonReport] = useState(true);
   const [campusAlerts, setCampusAlerts] = useState(true);
@@ -43,7 +44,10 @@ export default function ProfileScreen() {
 
   const handleAddContact = () => {
     if (!newName.trim() || !newPhone.trim()) {
-      Alert.alert("Missing info", "Please enter at least a name and phone number.");
+      Alert.alert(
+        "Missing info",
+        "Please enter at least a name and phone number."
+      );
       return;
     }
     const contact: TrustedContact = {
@@ -62,22 +66,39 @@ export default function ProfileScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={["bottom"]}>
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: colors.bg }]}
+      edges={["bottom"]}
+    >
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Trusted contacts & privacy</Text>
-          <Text style={styles.headerSubtitle}>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>
+            Trusted contacts & privacy
+          </Text>
+          <Text style={[styles.headerSubtitle, { color: colors.textMuted }]}>
             {user?.fullName} · {user?.email}
           </Text>
         </View>
 
-        <Text style={styles.sectionTitle}>TRUSTED CONTACTS</Text>
+        <Text style={[styles.sectionTitle, { color: colors.navy }]}>
+          TRUSTED CONTACTS
+        </Text>
         {contacts.map((contact) => (
-          <View key={contact.id} style={styles.contactCard}>
+          <View
+            key={contact.id}
+            style={[styles.contactCard, { backgroundColor: colors.card }]}
+          >
             <View style={{ flex: 1 }}>
-              <Text style={styles.contactName}>{contact.name}</Text>
-              <Text style={styles.contactPhone}>{contact.phone}</Text>
-              <Text style={styles.contactMeta}>
+              <Text style={[styles.contactName, { color: colors.text }]}>
+                {contact.name}
+              </Text>
+              <Text style={[styles.contactPhone, { color: colors.textMuted }]}>
+                {contact.phone}
+              </Text>
+              <Text style={[styles.contactMeta, { color: colors.textDim }]}>
                 {contact.relationship} · Alert via {contact.preferredAlertMethod}
               </Text>
             </View>
@@ -86,87 +107,138 @@ export default function ProfileScreen() {
                 persist(contacts.filter((c) => c.id !== contact.id))
               }
             >
-              <Ionicons name="trash-outline" size={22} color={COLORS.navy} />
+              <Ionicons name="trash-outline" size={22} color={colors.navy} />
             </TouchableOpacity>
           </View>
         ))}
 
         <View style={styles.addContactForm}>
           <TextInput
-            style={styles.input}
+            style={[
+              styles.input,
+              { backgroundColor: colors.input, color: colors.text },
+            ]}
             placeholder="Name"
-            placeholderTextColor={COLORS.textDim}
+            placeholderTextColor={colors.textDim}
             value={newName}
             onChangeText={setNewName}
           />
           <TextInput
-            style={styles.input}
+            style={[
+              styles.input,
+              { backgroundColor: colors.input, color: colors.text },
+            ]}
             placeholder="Phone"
-            placeholderTextColor={COLORS.textDim}
+            placeholderTextColor={colors.textDim}
             keyboardType="phone-pad"
             value={newPhone}
             onChangeText={setNewPhone}
           />
           <TextInput
-            style={styles.input}
+            style={[
+              styles.input,
+              { backgroundColor: colors.input, color: colors.text },
+            ]}
             placeholder="Email"
-            placeholderTextColor={COLORS.textDim}
+            placeholderTextColor={colors.textDim}
             keyboardType="email-address"
             value={newEmail}
             onChangeText={setNewEmail}
           />
           <TextInput
-            style={styles.input}
+            style={[
+              styles.input,
+              { backgroundColor: colors.input, color: colors.text },
+            ]}
             placeholder="Relationship"
-            placeholderTextColor={COLORS.textDim}
+            placeholderTextColor={colors.textDim}
             value={newRelationship}
             onChangeText={setNewRelationship}
           />
-          <TouchableOpacity style={styles.addButton} onPress={handleAddContact}>
-            <Ionicons name="person-add-outline" size={20} color={COLORS.white} />
-            <Text style={styles.addButtonText}>Add trusted contact</Text>
+          <TouchableOpacity
+            style={[styles.addButton, { backgroundColor: colors.navy }]}
+            onPress={handleAddContact}
+          >
+            <Ionicons name="person-add-outline" size={20} color={colors.bg} />
+            <Text style={[styles.addButtonText, { color: colors.bg }]}>
+              Add trusted contact
+            </Text>
           </TouchableOpacity>
         </View>
 
-        <Text style={styles.sectionTitle}>PRIVACY & PERMISSIONS</Text>
+        <Text style={[styles.sectionTitle, { color: colors.navy }]}>
+          PRIVACY & PERMISSIONS
+        </Text>
         {(
           [
-            ["Share my location during Help / Walk With Me", "Used only while an alert or journey is active", shareLocation, setShareLocation],
-            ["Anonymous report by default", "Your name won't be attached to reports", anonReport, setAnonReport],
-            ["Campus safety alerts", "Notifications about incidents & closures", campusAlerts, setCampusAlerts],
-            ["Enable Walk With Me", "Trusted contacts receive journey updates", walkWithMe, setWalkWithMe],
+            [
+              "Share my location during Help / Walk With Me",
+              "Used only while an alert or journey is active",
+              shareLocation,
+              setShareLocation,
+            ],
+            [
+              "Anonymous report by default",
+              "Your name won't be attached to reports",
+              anonReport,
+              setAnonReport,
+            ],
+            [
+              "Campus safety alerts",
+              "Notifications about incidents & closures",
+              campusAlerts,
+              setCampusAlerts,
+            ],
+            [
+              "Enable Walk With Me",
+              "Trusted contacts receive journey updates",
+              walkWithMe,
+              setWalkWithMe,
+            ],
           ] as const
         ).map(([title, subtitle, value, onChange]) => (
-          <View key={title} style={styles.toggleCard}>
+          <View
+            key={title}
+            style={[styles.toggleCard, { backgroundColor: colors.card }]}
+          >
             <View style={styles.toggleTextContainer}>
-              <Text style={styles.toggleTitle}>{title}</Text>
-              <Text style={styles.toggleSubtitle}>{subtitle}</Text>
+              <Text style={[styles.toggleTitle, { color: colors.text }]}>
+                {title}
+              </Text>
+              <Text style={[styles.toggleSubtitle, { color: colors.textMuted }]}>
+                {subtitle}
+              </Text>
             </View>
             <Switch
               value={value}
               onValueChange={onChange}
-              trackColor={{ false: "#ccc", true: COLORS.navy }}
-              thumbColor={COLORS.white}
+              trackColor={{ false: "#ccc", true: colors.navy }}
+              thumbColor={colors.white}
             />
           </View>
         ))}
 
-        <TouchableOpacity style={styles.linkCard} onPress={() => router.push("/privacy")}>
-          <Text style={styles.linkText}>Open full privacy notice</Text>
-          <Ionicons name="chevron-forward" size={18} color={COLORS.navy} />
+        <TouchableOpacity
+          style={[styles.linkCard, { backgroundColor: colors.cardAlt }]}
+          onPress={() => router.push("/privacy")}
+        >
+          <Text style={[styles.linkText, { color: colors.text }]}>
+            Open full privacy notice
+          </Text>
+          <Ionicons name="chevron-forward" size={18} color={colors.navy} />
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={styles.logoutBtn}
+          style={[styles.logoutBtn, { backgroundColor: colors.navy }]}
           onPress={async () => {
             await logout();
             router.replace("/login");
           }}
         >
-          <Text style={styles.logoutText}>Log out</Text>
+          <Text style={[styles.logoutText, { color: colors.bg }]}>Log out</Text>
         </TouchableOpacity>
 
-        <Text style={styles.footerNote}>
+        <Text style={[styles.footerNote, { color: colors.textMuted }]}>
           Your account is stored in Microsoft SQL Server (SafetyBuddy database).
         </Text>
         <View style={{ height: 100 }} />
@@ -176,20 +248,18 @@ export default function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.bg },
+  container: { flex: 1 },
   scrollContent: { padding: 20, paddingBottom: 40 },
   header: { marginBottom: 20 },
-  headerTitle: { fontSize: 24, fontWeight: "bold", color: COLORS.text },
-  headerSubtitle: { fontSize: 14, color: COLORS.textMuted, marginTop: 4 },
+  headerTitle: { fontSize: 24, fontWeight: "bold" },
+  headerSubtitle: { fontSize: 14, marginTop: 4 },
   sectionTitle: {
     fontSize: 12,
     fontWeight: "bold",
-    color: COLORS.navy,
     marginBottom: 10,
     letterSpacing: 0.8,
   },
   contactCard: {
-    backgroundColor: COLORS.card,
     padding: 15,
     borderRadius: 12,
     flexDirection: "row",
@@ -197,19 +267,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 10,
   },
-  contactName: { fontSize: 16, fontWeight: "700", color: COLORS.text },
-  contactPhone: { fontSize: 13, color: COLORS.textMuted, marginTop: 2 },
-  contactMeta: { fontSize: 12, color: COLORS.textDim, marginTop: 2 },
+  contactName: { fontSize: 16, fontWeight: "700" },
+  contactPhone: { fontSize: 13, marginTop: 2 },
+  contactMeta: { fontSize: 12, marginTop: 2 },
   addContactForm: { marginBottom: 24 },
   input: {
-    backgroundColor: COLORS.white,
     borderRadius: 10,
     padding: 14,
     marginBottom: 8,
-    color: COLORS.text,
   },
   addButton: {
-    backgroundColor: COLORS.navy,
     borderRadius: 10,
     padding: 14,
     flexDirection: "row",
@@ -217,9 +284,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
   },
-  addButtonText: { color: COLORS.white, fontWeight: "bold" },
+  addButtonText: { fontWeight: "bold" },
   toggleCard: {
-    backgroundColor: COLORS.card,
     padding: 14,
     borderRadius: 12,
     flexDirection: "row",
@@ -228,10 +294,9 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   toggleTextContainer: { flex: 1, paddingRight: 10 },
-  toggleTitle: { fontSize: 14, fontWeight: "bold", color: COLORS.text },
-  toggleSubtitle: { fontSize: 12, color: COLORS.textMuted, marginTop: 2 },
+  toggleTitle: { fontSize: 14, fontWeight: "bold" },
+  toggleSubtitle: { fontSize: 12, marginTop: 2 },
   linkCard: {
-    backgroundColor: COLORS.cardAlt,
     padding: 14,
     borderRadius: 12,
     flexDirection: "row",
@@ -240,18 +305,16 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     marginTop: 4,
   },
-  linkText: { color: COLORS.text, fontWeight: "700", fontSize: 14 },
+  linkText: { fontWeight: "700", fontSize: 14 },
   logoutBtn: {
     marginTop: 12,
-    backgroundColor: COLORS.navy,
     borderRadius: 12,
     padding: 14,
     alignItems: "center",
   },
-  logoutText: { color: COLORS.white, fontWeight: "800" },
+  logoutText: { fontWeight: "800" },
   footerNote: {
     fontSize: 12,
-    color: COLORS.textMuted,
     marginTop: 16,
     lineHeight: 18,
   },
