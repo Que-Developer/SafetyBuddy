@@ -761,6 +761,7 @@ const styles = StyleSheet.create({
   roundBtn2: {
     width: 44,
     height: 44,
+    top: 280,
     borderRadius: 22,
     alignItems: "center",
     justifyContent: "center",
