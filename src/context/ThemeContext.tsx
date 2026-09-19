@@ -16,19 +16,29 @@ const YELLOW_THEME = {
   link: '#0A7A6B',
   accent: '#000458',       // <-- Used for icons & highlights
   navy: '#000458',
+  tile: '#FFFFFF',
+  tileBorder: 'rgba(0,4,88,0.1)',
+  bgDeep: '#000458',
+  caution: '#F59E0B',
+  success: '#22C55E',
 };
 
 const DARK_THEME = {
   ...YELLOW_THEME,
-  bg: '#1a2332',
+  bg: '#002B5B',
   text: '#FFFFFF',
-  textMuted: '#B0B0C0',
-  textDim: '#8A8A9A',
-  card: '#23304a',
-  cardAlt: '#2A3A55',
-  input: '#2A3A55',
-  accent: '#4ade80',       // Green highlight in dark mode (readable on navy)
-  navy: '#4ade80',
+  textMuted: '#B8C5D6',
+  textDim: '#8A9BB3',
+  card: '#0A3A6E',
+  cardAlt: '#124578',
+  input: '#0F335F',
+  accent: '#FFD24C',
+  navy: '#FFD24C',
+  tile: '#0A3A6E',
+  tileBorder: 'rgba(255,210,76,0.2)',
+  bgDeep: '#001A3A',
+  caution: '#F59E0B',
+  success: '#22C55E',
 };
 
 

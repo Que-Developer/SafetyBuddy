@@ -85,7 +85,12 @@ export default function PanicScreen() {
       edges={["top", "bottom"]}
     >
       <Text style={[styles.title, { color: colors.text }]}>
-        Help is on the way
+        Sending emergency alert
+      </Text>
+      <Text style={[styles.sub, { color: colors.textMuted }]}>
+        The alert will be sent automatically in a few seconds. You can also
+        start this by shaking your phone from any tab. Tap cancel below if
+        this was a mistake.
       </Text>
 
       <View style={[styles.card, { backgroundColor: colors.card }]}>
