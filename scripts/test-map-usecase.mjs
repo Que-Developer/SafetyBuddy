@@ -5,22 +5,22 @@
  * Usage: node scripts/test-map-usecase.mjs
  */
 
-const CAMPUS_CENTER = { lat: -34.00195, lng: 25.67099 };
+const CAMPUS_CENTER = { lat: -33.9615, lng: 25.6155 };
 
 const DESTINATIONS = {
-  library: { id: "dest-library", name: "Library", lat: -34.0042, lng: 25.6702 },
+  library: { id: "dest-library", name: "Library", lat: -33.9608, lng: 25.6162 },
   northRes: {
     id: "dest-north-res",
     name: "North Residence",
-    lat: -33.9975,
-    lng: 25.673,
+    lat: -33.9596,
+    lng: 25.6174,
   },
 };
 
 const DANGER_MARKERS = [
-  { id: "danger-1", lat: -34.0038, lng: 25.6718 },
-  { id: "danger-2", lat: -34.0062, lng: 25.6692 },
-  { id: "danger-3", lat: -33.9982, lng: 25.6724 },
+  { id: "danger-1", lat: -33.9619, lng: 25.6168 },
+  { id: "danger-2", lat: -33.9628, lng: 25.6142 },
+  { id: "danger-3", lat: -33.9602, lng: 25.6151 },
 ];
 
 function buildSimulatedRoute(a, b, steps = 40) {

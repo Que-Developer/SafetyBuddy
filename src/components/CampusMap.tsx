@@ -452,15 +452,6 @@ export function CampusMap({
         send({ type: "setBase", base });
         send({ type: "setLayers", layers: activeLayers });
         send({ type: "setRoute", start, end });
-        if (liveLocation) {
-          send({
-            type: "setLiveLocation",
-            lat: liveLocation.lat,
-            lng: liveLocation.lng,
-            follow: followLive,
-          });
-        }
-        if (simulating) send({ type: "simulate", running: true });
       }
       onEvent(data);
     } catch {
@@ -482,15 +473,6 @@ export function CampusMap({
           send({ type: "setBase", base });
           send({ type: "setLayers", layers: activeLayers });
           send({ type: "setRoute", start, end });
-          if (liveLocation) {
-            send({
-              type: "setLiveLocation",
-              lat: liveLocation.lat,
-              lng: liveLocation.lng,
-              follow: followLive,
-            });
-          }
-          if (simulating) send({ type: "simulate", running: true });
         }
         onEvent(data as MapEvent);
       } catch {
