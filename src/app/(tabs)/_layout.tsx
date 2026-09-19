@@ -1,4 +1,4 @@
-import { ThemeProvider, useTheme } from "@/context/ThemeContext";
+import { useTheme } from "@/context/ThemeContext";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Tabs } from "expo-router";
 import { StyleSheet, View } from "react-native";
@@ -7,7 +7,7 @@ export default function TabsLayout() {
   const { colors } = useTheme();
 
   return (
-    <ThemeProvider>
+    
     <Tabs
       screenOptions={{
         headerStyle: { backgroundColor: colors.bg },
@@ -104,7 +104,7 @@ export default function TabsLayout() {
         options={{ href: null, title: "Resources" }}
       />
     </Tabs>
-    </ThemeProvider>
+   
   );
 }
 
