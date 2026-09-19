@@ -9,7 +9,7 @@ function hashPassword(password) {
 }
 
 function buildConnectionString() {
-  const server = process.env.SQLSERVER || "localhost";
+  const server = process.env.SQLSERVER || "(localdb)\\MSSQLLocalDB";
   const database = process.env.SQLDATABASE || "SafetyBuddy";
   const driver = process.env.SQL_DRIVER || "ODBC Driver 17 for SQL Server";
   return `Driver={${driver}};Server=${server};Database=${database};Trusted_Connection=Yes;TrustServerCertificate=Yes;`;
