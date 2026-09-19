@@ -1,30 +1,26 @@
+import { CampusMap, type MapEvent } from "@/components/CampusMap";
+import { CARD_SHADOW } from "@/constants/theme";
+import { useTheme } from "@/context/ThemeContext";
+import {
+  CAMPUS_DESTINATIONS,
+  MAP_WALK_CONTACTS,
+  type MapLayerKey
+} from "@/data/mapData";
+import { loadTrustedContacts } from "@/services/contacts";
 import { Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
-import { router } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
-  Dimensions,
   Modal,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { CampusMap, type MapEvent } from "@/components/CampusMap";
-import { CARD_SHADOW } from "@/constants/theme";
-import { useTheme } from "@/context/ThemeContext";
-import {
-  CAMPUS_DESTINATIONS,
-  MAP_LAYERS,
-  MAP_WALK_CONTACTS,
-  type MapLayerKey,
-} from "@/data/mapData";
-import { loadTrustedContacts } from "@/services/contacts";
-import { WALK_WITH_ME_USE_CASE } from "@/data/walkWithMeUseCase";
 
 type LatLng = { lat: number; lng: number };
 
@@ -390,7 +386,7 @@ export default function MapScreen() {
               </TouchableOpacity>
             </View>
             <TextInput
-              style={[styles.modalSearchInput, { color: colors.text, borderBottomColor: colors.navy }]}
+              style={[styles.modalSearchInput, { color: colors.text, borderBottomColor: colors.tileBorder }]}
               placeholder="Search destinations..."
               placeholderTextColor={colors.textDim}
               value={query}
@@ -401,7 +397,7 @@ export default function MapScreen() {
               {filteredDestinations.map((d) => (
                 <TouchableOpacity
                   key={d.id}
-                  style={[styles.modalItem, { borderBottomColor: colors.navy }]}
+                  style={[styles.modalItem, { borderBottomColor: colors.tileBorder }]}
                   onPress={() => chooseDestination(d.name, d.lat, d.lng)}
                 >
                   <Ionicons name="location-outline" size={20} color={ACCENT} style={{ marginRight: 12 }} />
@@ -438,7 +434,7 @@ export default function MapScreen() {
               {contacts.map((c) => (
                 <TouchableOpacity
                   key={c.id}
-                  style={[styles.contactItem, { borderBottomColor: colors.navy }]}
+                  style={[styles.contactItem, { borderBottomColor: colors.tileBorder }]}
                   onPress={() => confirmWalkWithContact(c)}
                 >
                   <View style={[styles.contactAvatar, { backgroundColor: c.color }]}>
@@ -486,7 +482,6 @@ const styles = StyleSheet.create({
   roundBtn2: {
     width: 44,
     height: 44,
-    top: 300,
     borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
