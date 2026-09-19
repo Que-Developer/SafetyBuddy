@@ -1,3 +1,6 @@
+import { CARD_SHADOW } from "@/constants/theme";
+import { useAuth } from "@/context/AuthContext";
+import { isSecurityRole } from "@/services/database";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useState } from "react";
@@ -13,9 +16,17 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useAuth } from "@/context/AuthContext";
-import { CARD_SHADOW, COLORS } from "@/constants/theme";
-import { isSecurityRole } from "@/services/database";
+
+// --- NEW COLORS ---
+const APP_COLORS = {
+  bg: "#ffd24c",       // Your bright yellow
+  text: "#000458",     // Your dark navy
+  card: "#fce07a",     // Slightly darker yellow for cards
+  input: "#fff",       // White input backgrounds
+  navy: "#000458",     // Navy for buttons
+  white: "#FFFFFF",
+  danger: "#E63946",
+};
 
 export default function LoginScreen() {
   const { login, apiOnline } = useAuth();
@@ -52,6 +63,7 @@ export default function LoginScreen() {
 
   return (
     <SafeAreaView style={styles.safe}>
+      <Text style={styles.brand}>Safety Buddy</Text>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -60,7 +72,6 @@ export default function LoginScreen() {
           contentContainerStyle={styles.scroll}
           keyboardShouldPersistTaps="handled"
         >
-          <Text style={styles.brand}>Safety Buddy</Text>
           <Text style={styles.heading}>Login</Text>
 
           <View style={styles.card}>
@@ -95,7 +106,7 @@ export default function LoginScreen() {
                 <Ionicons
                   name={showPassword ? "eye-off-outline" : "eye-outline"}
                   size={22}
-                  color={COLORS.navy}
+                  color={APP_COLORS.navy}
                 />
               </TouchableOpacity>
             </View>
@@ -110,7 +121,7 @@ export default function LoginScreen() {
               accessibilityLabel="Login"
             >
               {loading ? (
-                <ActivityIndicator color={COLORS.white} />
+                <ActivityIndicator color={APP_COLORS.white} />
               ) : (
                 <Text style={styles.primaryBtnText}>Login</Text>
               )}
@@ -121,9 +132,7 @@ export default function LoginScreen() {
           <TouchableOpacity
             style={styles.msBtn}
             onPress={() =>
-              setError(
-                "Microsoft SSO is a production concept. Use email login with a campus account."
-              )
+              setError("Please use email login with a campus account.")
             }
           >
             <View style={styles.msLogo}>
@@ -141,80 +150,90 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: COLORS.bg },
-  scroll: { padding: 22, paddingBottom: 40 },
+  safe: { 
+    flex: 1, 
+    backgroundColor: APP_COLORS.bg, // Yellow background
+  },
+  scroll: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    padding: 22,
+    paddingBottom: 40
+  },
   brand: {
     fontFamily: Platform.select({ ios: "Georgia", android: "serif", default: "serif" }),
     fontSize: 28,
-    color: COLORS.text,
+    color: APP_COLORS.text, // Navy
     fontWeight: "700",
-    marginTop: 8,
+    paddingHorizontal: 22,
+    paddingTop: 20,
+    marginTop: 0,
   },
   heading: {
     fontFamily: Platform.select({ ios: "Georgia", android: "serif", default: "serif" }),
     fontSize: 40,
-    color: COLORS.text,
+    color: APP_COLORS.text, // Navy
     fontWeight: "700",
     marginTop: 18,
     marginBottom: 18,
   },
   card: {
-    backgroundColor: COLORS.card,
+    backgroundColor: APP_COLORS.card, // Slightly darker yellow
     borderRadius: 18,
     padding: 18,
     ...CARD_SHADOW,
   },
   label: {
-    color: COLORS.text,
+    color: APP_COLORS.text, // Navy
     fontWeight: "700",
     fontSize: 13,
     marginBottom: 6,
     marginTop: 8,
   },
   input: {
-    backgroundColor: COLORS.input,
+    backgroundColor: APP_COLORS.input, // White input
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 12,
-    color: COLORS.text,
+    color: APP_COLORS.text, // Navy text
     marginBottom: 8,
     borderWidth: 1,
-    borderColor: "rgba(0,43,91,0.08)",
+    borderColor: "rgba(0,4,88,0.08)", // Subtle navy border
   },
   passwordRow: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: COLORS.input,
+    backgroundColor: APP_COLORS.input, // White input
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: "rgba(0,43,91,0.08)",
+    borderColor: "rgba(0,4,88,0.08)", // Subtle navy border
     marginBottom: 8,
   },
   passwordInput: {
     flex: 1,
     paddingHorizontal: 14,
     paddingVertical: 12,
-    color: COLORS.text,
+    color: APP_COLORS.text, // Navy text
   },
   eyeBtn: {
     paddingHorizontal: 12,
     paddingVertical: 10,
   },
   error: {
-    color: COLORS.danger,
+    color: APP_COLORS.danger, // Red
     fontSize: 13,
     marginTop: 4,
     marginBottom: 4,
   },
   primaryBtn: {
     marginTop: 12,
-    backgroundColor: COLORS.navy,
+    backgroundColor: APP_COLORS.navy, // Navy button
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: "center",
   },
   primaryBtnText: {
-    color: COLORS.white,
+    color: APP_COLORS.white, // White text
     fontWeight: "800",
     fontSize: 16,
   },
@@ -222,11 +241,11 @@ const styles = StyleSheet.create({
     marginTop: 22,
     marginBottom: 12,
     textAlign: "center",
-    color: COLORS.text,
+    color: APP_COLORS.text, // Navy
     fontWeight: "600",
   },
   msBtn: {
-    backgroundColor: COLORS.navy,
+    backgroundColor: APP_COLORS.navy, // Navy button
     borderRadius: 12,
     paddingVertical: 14,
     flexDirection: "row",
@@ -243,5 +262,9 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   msSquare: { width: 8, height: 8 },
-  msText: { color: COLORS.white, fontWeight: "800", fontSize: 16 },
+  msText: { 
+    color: APP_COLORS.white, // White text
+    fontWeight: "800", 
+    fontSize: 16 
+  },
 });
