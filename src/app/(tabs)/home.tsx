@@ -1,378 +1,249 @@
+import { Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
+import { useEffect, useRef } from "react";
 import {
-  SafeAreaView,
+  Animated,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
-import { router } from "expo-router"
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useAuth } from "@/context/AuthContext";
+import { useTheme } from "@/context/ThemeContext";
+import { CARD_SHADOW } from "@/constants/theme";
+import { SAFETY_ALERTS } from "@/data/mockData";
 
-// ---- Design tokens -------------------------------------------------
-const COLORS = {
-  bg: "#FFD24C",
-  text: "#0A0A3D",
-  textMuted: "#5A5A7A",
-  card: "#FFE27A",
-  cardAlt: "#FFE27A",
-  danger: "#E63946",
-  dangerDark: "#C1121F",
-  white: "#FFFFFF",
-  black: "#000000",
-  link: "#0A7A6B",
-  shadow: "#000",
-};
+const ACTIONS = [
+  {
+    key: "walk-with-me",
+    title: "Walk with me",
+    sub: "Trusted contact",
+    icon: "people" as const,
+    href: "/(tabs)/map",
+  },
+  {
+    key: "contacts",
+    title: "Contacts",
+    sub: "Manage contacts",
+    icon: "call" as const,
+    href: "/(tabs)/profile",
+  },
+  {
+    key: "alerts",
+    title: "Campus alerts",
+    sub: "Stay informed",
+    icon: "notifications" as const,
+    href: "/alerts",
+  },
+  {
+    key: "support",
+    title: "Support",
+    sub: "Counseling & help",
+    icon: "heart" as const,
+    href: "/support",
+  },
+];
 
-// ---- Small reusable pieces ----------------------------------------
-type TileProps = {
-  emoji: string;
-  title: string;
-  subtitle: string;
-  onPress?: () => void;
-};
-
-function Tile({ emoji, title, subtitle, onPress }: TileProps) {
-  return (
-    <TouchableOpacity style={styles.tile} onPress={onPress} activeOpacity={0.85}>
-      <Text style={styles.tileEmoji}>{emoji}</Text>
-      <Text style={styles.tileTitle}>{title}</Text>
-      <Text style={styles.tileSubtitle}>{subtitle}</Text>
-    </TouchableOpacity>
-  );
+function timeAgo(dateTime: string) {
+  const then = new Date(dateTime.replace(" ", "T")).getTime();
+  const mins = Math.max(1, Math.round((Date.now() - then) / 60000));
+  if (mins < 60) return `${mins} min ago`;
+  return `${Math.round(mins / 60)} hr ago`;
 }
 
-type AlertProps = {
-  time: string;
-  title: string;
-  body: string;
-};
-
-function AlertCard({ time, title, body }: AlertProps) {
-  return (
-    <View style={styles.alertCard}>
-      <View style={styles.alertHeader}>
-        <View style={styles.alertDot} />
-        <Text style={styles.alertTime}>{time}</Text>
-      </View>
-      <Text style={styles.alertTitle}>{title}</Text>
-      <Text style={styles.alertBody}>{body}</Text>
-    </View>
-  );
-}
-
-// ---- Screen --------------------------------------------------------
 export default function HomeScreen() {
-  return (
-    <SafeAreaView style={styles.safe}>
+  const { user } = useAuth();
+  const { colors } = useTheme();
+  const firstName = user?.fullName?.split(" ")[0] ?? "there";
+  const slide = useRef(new Animated.Value(40)).current;
+  const opacity = useRef(new Animated.Value(0)).current;
 
+  useEffect(() => {
+    Animated.parallel([
+      Animated.spring(slide, { toValue: 0, useNativeDriver: true, friction: 8 }),
+      Animated.timing(opacity, {
+        toValue: 1,
+        duration: 260,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [slide, opacity]);
+
+  return (
+    <SafeAreaView style={[styles.safe, { backgroundColor: colors.bg }]} edges={["top"]}>
+      <Animated.View
+        style={{ flex: 1, opacity, transform: [{ translateY: slide }] }}
+      >
       <ScrollView
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
-        <Text style={styles.brand}>SafetyBuddy</Text>
-        <Text style={styles.greeting}>Hi, Amahle</Text>
-        <Text style={styles.subGreeting}>
+        <Text style={[styles.brand, { color: colors.navy }]}>SafetyBuddy</Text>
+        <Text style={[styles.greeting, { color: colors.text }]}>
+          Hi, {firstName}
+        </Text>
+        <Text style={[styles.subGreeting, { color: colors.textMuted }]}>
           You're safe on campus. Here's what's happening around you.
         </Text>
 
-        {/* Emergency SOS */}
-        <TouchableOpacity style={styles.sosCard} activeOpacity={0.9} onPress={() => router.push("/(tabs)/panic")}>
+        <TouchableOpacity
+          style={[styles.sosCard, { backgroundColor: colors.danger }]}
+          activeOpacity={0.9}
+          onPress={() => router.push("/(tabs)/panic")}
+        >
           <View style={styles.sosIconWrap}>
-            <Text style={styles.sosIcon}>🔔</Text>
+            <Ionicons name="warning" size={22} color={colors.danger} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.sosLabel}>Emergency</Text>
-            <Text style={styles.sosTitle}>Hold For SOS</Text>
+            <Text style={styles.sosTitle}>Emergency Hold For SOS</Text>
             <Text style={styles.sosSub}>
               Alert sent to trusted & security contacts
             </Text>
           </View>
-          <Text style={styles.sosArrow}>→</Text>
+          <Ionicons name="chevron-forward" size={20} color="#FFF" />
         </TouchableOpacity>
 
-        {/* 2x2 Tiles */}
         <View style={styles.grid}>
-          <Tile emoji="🚶" title="Safe Walk" subtitle="Best route" />
-          <Tile emoji="👥" title="Walk with me" subtitle="Trusted Contact" onPress={() => router.push("/(tabs)/map")}/>
-          <Tile emoji="📄" title="Report" subtitle="Anonymous OK" />
-          <Tile emoji="📞" title="Contacts" subtitle="Anonymous OK" />
+          {ACTIONS.map((a) => (
+            <TouchableOpacity
+              key={a.key}
+              style={[styles.actionCard, { backgroundColor: colors.card }]}
+              onPress={() => router.push(a.href as never)}
+            >
+              <Ionicons name={a.icon} size={28} color={colors.navy} />
+              <Text style={[styles.actionTitle, { color: colors.text }]}>
+                {a.title}
+              </Text>
+              <Text style={[styles.actionSub, { color: colors.textMuted }]}>
+                {a.sub}
+              </Text>
+            </TouchableOpacity>
+          ))}
         </View>
 
-        {/* Campus alerts header */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Campus alerts</Text>
-          <TouchableOpacity>
+        <View style={styles.alertsHeader}>
+          <Text style={[styles.alertsTitle, { color: colors.text }]}>
+            Campus alerts
+          </Text>
+          <TouchableOpacity onPress={() => router.push("/alerts")}>
             <Text style={styles.seeAll}>See All</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Alerts */}
-        <AlertCard
-          time="20 min ago"
-          title="Construction near the Main Gate"
-          body="Pedestrian access on the east side until Friday. Allow extra time."
-        />
-        <AlertCard
-          time="1 hour ago"
-          title="Pathway closed behind Science Building"
-          body="Grounds maintenance in progress. Use the Auditorium route instead."
-        />
+        {SAFETY_ALERTS.slice(0, 2).map((alert) => (
+          <TouchableOpacity
+            key={alert.id}
+            style={[styles.alertCard, { backgroundColor: colors.card }]}
+            onPress={() => router.push("/alerts")}
+          >
+            <Text style={styles.alertTime}>{timeAgo(alert.dateTime)}</Text>
+            <Text style={[styles.alertTitle, { color: colors.text }]}>
+              {alert.title}
+            </Text>
+          </TouchableOpacity>
+        ))}
 
-        {/* Not feeling okay card */}
-        <TouchableOpacity style={styles.wellnessCard} activeOpacity={0.9}>
-          <Text style={styles.wellnessIcon}>💚</Text>
+        <TouchableOpacity
+          style={[styles.wellness, { backgroundColor: colors.card }]}
+          onPress={() => router.push("/(tabs)/resources")}
+        >
+          <Ionicons name="heart" size={22} color="#16A34A" />
           <View style={{ flex: 1 }}>
-            <Text style={styles.wellnessTitle}>Not feeling okay?</Text>
-            <Text style={styles.wellnessSub}>
-              Counselling, peer support & wellness tools
+            <Text style={[styles.wellnessTitle, { color: colors.text }]}>
+              Not feeling okay?
+            </Text>
+            <Text style={[styles.wellnessSub, { color: colors.textMuted }]}>
+              Counseling & wellness tools are here for you
             </Text>
           </View>
-          <Text style={styles.sosArrow}>→</Text>
+          <Ionicons name="chevron-forward" size={18} color={colors.navy} />
         </TouchableOpacity>
-
-        <View style={{ height: 100 }} />
       </ScrollView>
-
+      </Animated.View>
     </SafeAreaView>
   );
 }
 
-// ---- Tab bar pieces ------------------------------------------------
-function TabItem({
-  emoji,
-  label,
-  active,
-}: {
-  emoji: string;
-  label: string;
-  active?: boolean;
-}) {
-  return (
-    <TouchableOpacity style={styles.tabItem}>
-      <Text style={[styles.tabEmoji, active && { opacity: 1 }]}>{emoji}</Text>
-      <Text style={[styles.tabLabel, active && styles.tabLabelActive]}>
-        {label}
-      </Text>
-    </TouchableOpacity>
-  );
-}
-
-
-// ---- Styles --------------------------------------------------------
-const CARD_SHADOW = {
-  shadowColor: COLORS.shadow,
-  shadowOffset: { width: 0, height: 6 },
-  shadowOpacity: 0.15,
-  shadowRadius: 10,
-  elevation: 4,
-};
-
 const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: COLORS.bg,
-  },
-  statusBar: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingTop: 6,
-    paddingBottom: 4,
-  },
-  statusTime: { color: COLORS.black, fontWeight: "700", fontSize: 14 },
-  statusIcons: { color: COLORS.black, fontSize: 12 },
-
-  scroll: { paddingHorizontal: 18, paddingTop: 8, paddingBottom: 24 },
-
+  safe: { flex: 1 },
+  scroll: { paddingHorizontal: 18, paddingBottom: 110, paddingTop: 8 },
   brand: {
-    color: COLORS.text,
-    fontWeight: "700",
-    fontSize: 16,
-    marginBottom: 12,
+    fontSize: 34,
+    fontWeight: "900",
+    marginBottom: 10,
   },
   greeting: {
-    color: COLORS.text,
-    fontWeight: "800",
-    fontSize: 26,
-    marginBottom: 4,
+    fontSize: 24,
+    fontWeight: "900",
   },
   subGreeting: {
-    color: COLORS.text,
-    opacity: 0.65,
     fontSize: 14,
     lineHeight: 20,
-    marginBottom: 18,
+    marginTop: 4,
+    marginBottom: 16,
   },
-
-  // SOS card
   sosCard: {
+    borderRadius: 16,
+    padding: 14,
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: COLORS.danger,
-    borderRadius: 18,
-    padding: 14,
-    marginBottom: 18,
-    borderWidth: 2,
-    borderColor: COLORS.dangerDark,
+    gap: 12,
+    marginBottom: 14,
     ...CARD_SHADOW,
   },
   sosIconWrap: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: COLORS.white,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "#FFFFFF",
     alignItems: "center",
     justifyContent: "center",
-    marginRight: 12,
   },
-  sosIcon: { fontSize: 28 },
-  sosLabel: {
-    color: COLORS.white,
-    fontSize: 12,
-    fontWeight: "700",
-    opacity: 0.95,
-    marginBottom: 2,
-  },
-  sosTitle: {
-    color: COLORS.white,
-    fontSize: 18,
-    fontWeight: "900",
-    marginBottom: 2,
-  },
-  sosSub: { color: COLORS.white, fontSize: 12, opacity: 0.9 },
-  sosArrow: {
-    color: COLORS.white,
-    fontSize: 20,
-    marginLeft: 6,
-    fontWeight: "700",
-  },
-
-  // Grid
+  sosTitle: { color: "#FFFFFF", fontWeight: "900", fontSize: 15 },
+  sosSub: { color: "rgba(255,255,255,0.9)", fontSize: 12, marginTop: 2 },
   grid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    justifyContent: "space-between",
-    marginBottom: 20,
+    gap: 12,
+    marginBottom: 18,
   },
-  tile: {
-    width: "48%",
-    backgroundColor: COLORS.card,
+  actionCard: {
+    width: "47%",
+    flexGrow: 1,
     borderRadius: 16,
-    padding: 14,
-    marginBottom: 12,
+    padding: 16,
+    minHeight: 110,
     ...CARD_SHADOW,
   },
-  tileEmoji: { fontSize: 22, marginBottom: 10 },
-  tileTitle: {
-    color: COLORS.text,
-    fontWeight: "800",
-    fontSize: 15,
-    marginBottom: 2,
-  },
-  tileSubtitle: { color: COLORS.text, opacity: 0.6, fontSize: 12 },
-
-  // Section header
-  sectionHeader: {
+  actionTitle: { fontWeight: "900", fontSize: 16, marginTop: 10 },
+  actionSub: { fontSize: 12, marginTop: 2 },
+  alertsHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 12,
+    marginBottom: 10,
   },
-  sectionTitle: { color: COLORS.text, fontWeight: "800", fontSize: 20 },
-  seeAll: {
-    color: COLORS.link,
-    fontWeight: "700",
-    fontSize: 14,
-    textDecorationLine: "underline",
-  },
-
-  // Alert cards
+  alertsTitle: { fontWeight: "900", fontSize: 18 },
+  seeAll: { color: "#16A34A", fontWeight: "800", fontSize: 13 },
   alertCard: {
-    backgroundColor: COLORS.cardAlt,
-    borderRadius: 16,
+    borderRadius: 14,
     padding: 14,
-    marginBottom: 12,
+    marginBottom: 10,
     ...CARD_SHADOW,
   },
-  alertHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 6,
-  },
-  alertDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    borderWidth: 2,
-    borderColor: COLORS.danger,
-    marginRight: 6,
-    backgroundColor: "transparent",
-  },
-  alertTime: { color: COLORS.text, opacity: 0.7, fontSize: 12 },
-  alertTitle: {
-    color: COLORS.text,
-    fontWeight: "800",
-    fontSize: 15,
-    marginBottom: 4,
-  },
-  alertBody: {
-    color: COLORS.text,
-    opacity: 0.7,
-    fontSize: 13,
-    lineHeight: 18,
-  },
-
-  // Wellness card
-  wellnessCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: COLORS.card,
-    borderRadius: 16,
+  alertTime: { color: "#E63946", fontWeight: "700", fontSize: 12, marginBottom: 4 },
+  alertTitle: { fontWeight: "800", fontSize: 15 },
+  wellness: {
+    marginTop: 6,
+    borderRadius: 14,
     padding: 14,
-    marginTop: 4,
-    ...CARD_SHADOW,
-  },
-  wellnessIcon: { fontSize: 24, marginRight: 10 },
-  wellnessTitle: {
-    color: COLORS.text,
-    fontWeight: "800",
-    fontSize: 15,
-    marginBottom: 2,
-  },
-  wellnessSub: { color: COLORS.text, opacity: 0.65, fontSize: 12 },
-
-  // Bottom tabs
-  tabBar: {
-    position: "absolute",
-    left: 12,
-    right: 12,
-    bottom: 12,
     flexDirection: "row",
-    justifyContent: "space-around",
     alignItems: "center",
-    backgroundColor: "#F3D98A",
-    borderRadius: 22,
-    paddingVertical: 8,
-    paddingHorizontal: 6,
+    gap: 12,
     ...CARD_SHADOW,
   },
-  tabItem: { alignItems: "center", flex: 1 },
-  tabEmoji: { fontSize: 20, opacity: 0.55, marginBottom: 2 },
-  tabLabel: { color: COLORS.text, opacity: 0.55, fontSize: 11 },
-  tabLabelActive: { opacity: 1, fontWeight: "800" },
-
-  sosTab: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: COLORS.danger,
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: -22,
-    borderWidth: 3,
-    borderColor: COLORS.bg,
-    ...CARD_SHADOW,
-  },
-  sosTabIcon: { fontSize: 24 },
+  wellnessTitle: { fontWeight: "800", fontSize: 15 },
+  wellnessSub: { fontSize: 12, marginTop: 2 },
 });

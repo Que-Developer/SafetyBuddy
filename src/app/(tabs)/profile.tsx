@@ -1,344 +1,321 @@
-import { Ionicons } from '@expo/vector-icons'; // Standard Expo icon pack
-import { useState } from 'react';
-import { ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native'; // import React naitive components
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
+import { useEffect, useState } from "react";
+import {
+  Alert,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useAuth } from "@/context/AuthContext";
+import { useTheme } from "@/context/ThemeContext";
+import {
+  loadTrustedContacts,
+  saveTrustedContacts,
+  type TrustedContact,
+} from "@/services/contacts";
 
-//Remember Diarra the styles.whaterver is like a css ID for the styles.create
 export default function ProfileScreen() {
-  // State variables for the toggles (Dark mode, Privacy switches)
-  const [darkMode, setDarkMode] = useState(false);
+  const { user, logout } = useAuth();
+  const { colors } = useTheme();
   const [shareLocation, setShareLocation] = useState(true);
   const [anonReport, setAnonReport] = useState(true);
   const [campusAlerts, setCampusAlerts] = useState(true);
   const [walkWithMe, setWalkWithMe] = useState(true);
-  const [masterSwitch, setMasterSwitch] = useState(false);
+  const [contacts, setContacts] = useState<TrustedContact[]>([]);
+  const [newName, setNewName] = useState("");
+  const [newPhone, setNewPhone] = useState("");
+  const [newRelationship, setNewRelationship] = useState("");
+  const [newEmail, setNewEmail] = useState("");
 
-  //  STATE FOR THE CONTACT LIST
-  const [contacts, setContacts] = useState([
-    { id: '1', name: 'Mother', phone: '+27 79 757 4730', relationship: '' }
-  ]);
+  useEffect(() => {
+    loadTrustedContacts().then(setContacts);
+  }, []);
 
-  //  STATE FOR THE INPUT FIELDS
-  const [newName, setNewName] = useState('');
-  const [newPhone, setNewPhone] = useState('');
-  const [newRelationship, setNewRelationship] = useState('');
+  const persist = async (next: TrustedContact[]) => {
+    setContacts(next);
+    await saveTrustedContacts(next);
+  };
 
-  //  FUNCTION TO ADD A NEW CONTACT
   const handleAddContact = () => {
-    // Basic validation Don't add if name or phone is empty
-    if (newName.trim() === '' || newPhone.trim() === '') {
-      alert('Missing Info please enter at least a name and phone number.');
+    if (!newName.trim() || !newPhone.trim()) {
+      Alert.alert(
+        "Missing info",
+        "Please enter at least a name and phone number."
+      );
       return;
     }
-
-    // Create the new contact object
-    const newContact = {
-      id: Date.now().toString(), // Generates a unique ID based on time
-      name: newName,
-      phone: newPhone,
-      relationship: newRelationship,
+    const contact: TrustedContact = {
+      id: Date.now().toString(),
+      name: newName.trim(),
+      phone: newPhone.trim(),
+      relationship: newRelationship.trim() || "Trusted",
+      email: newEmail.trim() || "demo@example.com",
+      preferredAlertMethod: "SMS",
     };
-
-    // Add it to the existing list and clear the text boxes
-    setContacts([...contacts, newContact]);
-    setNewName('');
-    setNewPhone('');
-    setNewRelationship('');
+    persist([...contacts, contact]);
+    setNewName("");
+    setNewPhone("");
+    setNewRelationship("");
+    setNewEmail("");
   };
-
-  // FUNCTION TO DELETE A CONTACT
-  const handleDeleteContact = (id: string) => {
-    // Keep only the contacts whose ID does NOT match the one we want to delete
-    const updatedContacts = contacts.filter((contact) => contact.id !== id);
-    setContacts(updatedContacts);
-  };
-
 
   return (
-    // SafeAreaView ensures content doesn't go under the phone's notch/status bar
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-      {/* ScrollView allows the user to scroll down if content is too long */}
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        
-        {/* --- HEADER --- */}
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: colors.bg }]}
+      edges={["bottom"]}
+    >
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Profile & Privacy</Text>
-          <Text style={styles.headerSubtitle}>You control your data</Text>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>
+            Trusted contacts & privacy
+          </Text>
+          <Text style={[styles.headerSubtitle, { color: colors.textMuted }]}>
+            {user?.fullName} · {user?.email}
+          </Text>
         </View>
 
-        {/* --- DISPLAY NAME & DARK MODE --- */}
-        <View style={styles.rowBetween}>
-          <View style={styles.displayNameBox}>
-            <Text style={styles.label}>DISPLAY NAME</Text>
-            <Text style={styles.valueText}>Amahle</Text>
-          </View>
-          
-          <View style={styles.darkModeBox}>
-            <Text style={styles.darkModeText}>Dark Mode</Text>
-            <Switch 
-              value={darkMode} 
-              onValueChange={setDarkMode}
-              trackColor={{ false: "#767577", true: "#000458" }}
-              thumbColor={"#fff"}
-            />
-          </View>
-        </View>
-
-        {/* --- TRUSTED CONTACTS --- */}
-        <Text style={styles.sectionTitle}>TRUSTED CONTACTS</Text>
-        
-        {/* Dynamic List of Contacts */}
+        <Text style={[styles.sectionTitle, { color: colors.navy }]}>
+          TRUSTED CONTACTS
+        </Text>
         {contacts.map((contact) => (
-          <View key={contact.id} style={styles.contactCard}>
-            <View>
-              <Text style={styles.contactName}>{contact.name}</Text>
-              <Text style={styles.contactPhone}>{contact.phone}</Text>
-              {/* Only show relationship if it exists */}
-              {contact.relationship ? (
-                <Text style={styles.contactRelationship}>{contact.relationship}</Text>
-              ) : null}
+          <View
+            key={contact.id}
+            style={[styles.contactCard, { backgroundColor: colors.card }]}
+          >
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.contactName, { color: colors.text }]}>
+                {contact.name}
+              </Text>
+              <Text style={[styles.contactPhone, { color: colors.textMuted }]}>
+                {contact.phone}
+              </Text>
+              <Text style={[styles.contactMeta, { color: colors.textDim }]}>
+                {contact.relationship} · Alert via {contact.preferredAlertMethod}
+              </Text>
             </View>
-            
-            {/* Delete Button */}
-            <TouchableOpacity onPress={() => handleDeleteContact(contact.id)}>
-              <Ionicons name="trash-outline" size={24} color="#000458" />
+            <TouchableOpacity
+              onPress={() =>
+                persist(contacts.filter((c) => c.id !== contact.id))
+              }
+            >
+              <Ionicons name="trash-outline" size={22} color={colors.navy} />
             </TouchableOpacity>
           </View>
         ))}
 
-        {/* Add Contact Form */}
         <View style={styles.addContactForm}>
-          <TextInput 
-            style={styles.input} 
-            placeholder="Name" 
-            placeholderTextColor="#888"
-            value={newName}                 // Connect to state
-            onChangeText={setNewName}       // Update state when typing
+          <TextInput
+            style={[
+              styles.input,
+              { backgroundColor: colors.input, color: colors.text },
+            ]}
+            placeholder="Name"
+            placeholderTextColor={colors.textDim}
+            value={newName}
+            onChangeText={setNewName}
           />
-          <View style={styles.rowInput}>
-            <TextInput 
-              style={[styles.input, { flex: 2, marginRight: 10 }]} 
-              placeholder="Phone" 
-              placeholderTextColor="#888"
-              keyboardType="phone-pad"      // Shows number pad on phone
-              value={newPhone}
-              onChangeText={setNewPhone}
-            />
-            <TextInput 
-              style={[styles.input, { flex: 1 }]} 
-              placeholder="Relationship" 
-              placeholderTextColor="#888"
-              value={newRelationship}
-              onChangeText={setNewRelationship}
-            />
-          </View>
-          
-          {/* Button triggers handleAddContact */}
-          <TouchableOpacity style={styles.addButton} onPress={handleAddContact}>
-            <Ionicons name="person-add-outline" size={20} color="#000458" />
-            <Text style={styles.addButtonText}>Add trusted contact</Text>
+          <TextInput
+            style={[
+              styles.input,
+              { backgroundColor: colors.input, color: colors.text },
+            ]}
+            placeholder="Phone"
+            placeholderTextColor={colors.textDim}
+            keyboardType="phone-pad"
+            value={newPhone}
+            onChangeText={setNewPhone}
+          />
+          <TextInput
+            style={[
+              styles.input,
+              { backgroundColor: colors.input, color: colors.text },
+            ]}
+            placeholder="Email"
+            placeholderTextColor={colors.textDim}
+            keyboardType="email-address"
+            value={newEmail}
+            onChangeText={setNewEmail}
+          />
+          <TextInput
+            style={[
+              styles.input,
+              { backgroundColor: colors.input, color: colors.text },
+            ]}
+            placeholder="Relationship"
+            placeholderTextColor={colors.textDim}
+            value={newRelationship}
+            onChangeText={setNewRelationship}
+          />
+          <TouchableOpacity
+            style={[styles.addButton, { backgroundColor: colors.navy }]}
+            onPress={handleAddContact}
+          >
+            <Ionicons name="person-add-outline" size={20} color={colors.bg} />
+            <Text style={[styles.addButtonText, { color: colors.bg }]}>
+              Add trusted contact
+            </Text>
           </TouchableOpacity>
         </View>
 
-        {/* --- PRIVACY & PERMISSIONS --- */}
-        <Text style={styles.sectionTitle}>PRIVACY & PERMISSIONS</Text>
-
-       
-        <View style={styles.toggleCard}>
-          <View style={styles.toggleTextContainer}>
-            <Text style={styles.toggleTitle}>Share my location</Text>
-            <Text style={styles.toggleSubtitle}>Used for Safe Walk & Walk With Me</Text>
-          </View>
-          <Switch value={shareLocation} onValueChange={setShareLocation} />
-        </View>
-
-        <View style={styles.toggleCard}>
-          <View style={styles.toggleTextContainer}>
-            <Text style={styles.toggleTitle}>Anonymous report by default</Text>
-            <Text style={styles.toggleSubtitle}>Your name won't be attached to reports</Text>
-          </View>
-          <Switch value={anonReport} onValueChange={setAnonReport} />
-        </View>
-
-        <View style={styles.toggleCard}>
-          <View style={styles.toggleTextContainer}>
-            <Text style={styles.toggleTitle}>Campus safety alerts</Text>
-            <Text style={styles.toggleSubtitle}>Notifications about incidents & closures</Text>
-          </View>
-          <Switch value={campusAlerts} onValueChange={setCampusAlerts} />
-        </View>
-
-        <View style={styles.toggleCard}>
-          <View style={styles.toggleTextContainer}>
-            <Text style={styles.toggleTitle}>Enable Walk With Me</Text>
-            <Text style={styles.toggleSubtitle}>Trusted contacts receive journey updates</Text>
-          </View>
-          <Switch value={walkWithMe} onValueChange={setWalkWithMe} />
-        </View>
-
-        <View style={styles.toggleCard}>
-          <View style={styles.toggleTextContainer}>
-            <Text style={styles.toggleTitle}>Master privacy switch (disable all)</Text>
-            <Text style={styles.toggleSubtitle}>Turn off location, alerts, and journey sharing</Text>
-          </View>
-          <Switch value={masterSwitch} onValueChange={setMasterSwitch} />
-        </View>
-
-        {/* --- FOOTER NOTE --- */}
-        <Text style={styles.footerNote}>
-          SafetyBuddy only uses your data to help keep safe. Location is shared with trusted contacts during an active Walk With Me.
+        <Text style={[styles.sectionTitle, { color: colors.navy }]}>
+          PRIVACY & PERMISSIONS
         </Text>
+        {(
+          [
+            [
+              "Share my location during Help / Walk With Me",
+              "Used only while an alert or journey is active",
+              shareLocation,
+              setShareLocation,
+            ],
+            [
+              "Anonymous report by default",
+              "Your name won't be attached to reports",
+              anonReport,
+              setAnonReport,
+            ],
+            [
+              "Campus safety alerts",
+              "Notifications about incidents & closures",
+              campusAlerts,
+              setCampusAlerts,
+            ],
+            [
+              "Enable Walk With Me",
+              "Trusted contacts receive journey updates",
+              walkWithMe,
+              setWalkWithMe,
+            ],
+          ] as const
+        ).map(([title, subtitle, value, onChange]) => (
+          <View
+            key={title}
+            style={[styles.toggleCard, { backgroundColor: colors.card }]}
+          >
+            <View style={styles.toggleTextContainer}>
+              <Text style={[styles.toggleTitle, { color: colors.text }]}>
+                {title}
+              </Text>
+              <Text style={[styles.toggleSubtitle, { color: colors.textMuted }]}>
+                {subtitle}
+              </Text>
+            </View>
+            <Switch
+              value={value}
+              onValueChange={onChange}
+              trackColor={{ false: "#ccc", true: colors.navy }}
+              thumbColor={colors.white}
+            />
+          </View>
+        ))}
 
+        <TouchableOpacity
+          style={[styles.linkCard, { backgroundColor: colors.cardAlt }]}
+          onPress={() => router.push("/privacy")}
+        >
+          <Text style={[styles.linkText, { color: colors.text }]}>
+            Open full privacy notice
+          </Text>
+          <Ionicons name="chevron-forward" size={18} color={colors.navy} />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.logoutBtn, { backgroundColor: colors.navy }]}
+          onPress={async () => {
+            await logout();
+            router.replace("/login");
+          }}
+        >
+          <Text style={[styles.logoutText, { color: colors.bg }]}>Log out</Text>
+        </TouchableOpacity>
+
+        <Text style={[styles.footerNote, { color: colors.textMuted }]}>
+          Your account is stored in Microsoft SQL Server (SafetyBuddy database).
+        </Text>
+        <View style={{ height: 100 }} />
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-// This is where we define how everything looks 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#ffd24c', // The yellow background
-  },
-  scrollContent: {
-    padding: 20,
-    paddingBottom: 40, // Extra padding at bottom so it doesn't hide behind tabs
-  },
-  header: {
-    marginBottom: 20,
-    backgroundColor: '#fce07a'
-  },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#000458', // Dark blue
-  },
-  headerSubtitle: {
-    fontSize: 16,
-    color: '#000458',
-    opacity: 0.8,
-  },
-  rowBetween: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 30,
-  },
-  displayNameBox: {
-    backgroundColor: '#fce07a', // Slightly darker yellow for the box
-    padding: 15,
-    borderRadius: 10,
-    flex: 1,
-    marginRight: 15,
-  },
-  label: {
-    fontSize: 12,
-    color: '#000458',
-    marginBottom: 5,
-    textTransform: 'uppercase',
-  },
-  valueText: {
-    fontSize: 18,
-    color: '#000458',
-  },
-  darkModeBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  darkModeText: {
-    color: '#000458',
-    marginRight: 10,
-    fontWeight: '500',
-  },
+  container: { flex: 1 },
+  scrollContent: { padding: 20, paddingBottom: 40 },
+  header: { marginBottom: 20 },
+  headerTitle: { fontSize: 24, fontWeight: "bold" },
+  headerSubtitle: { fontSize: 14, marginTop: 4 },
   sectionTitle: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#000458',
+    fontSize: 12,
+    fontWeight: "bold",
     marginBottom: 10,
-    textTransform: 'uppercase',
+    letterSpacing: 0.8,
   },
   contactCard: {
-    backgroundColor: '#fce07a',
     padding: 15,
-    borderRadius: 10,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 15,
-  },
-  contactName: {
-    fontSize: 18,
-    fontWeight: '500',
-    color: '#000458',
-  },
-  contactPhone: {
-    fontSize: 14,
-    color: '#000458',
-    opacity: 0.7,
-  },
-  addContactForm: {
-    marginBottom: 30,
-  },
-  input: {
-    backgroundColor: '#e0e0e0', // Grayish input background
-    borderRadius: 10,
-    padding: 15,
+    borderRadius: 12,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 10,
-    color: '#000',
   },
-  rowInput: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  contactName: { fontSize: 16, fontWeight: "700" },
+  contactPhone: { fontSize: 13, marginTop: 2 },
+  contactMeta: { fontSize: 12, marginTop: 2 },
+  addContactForm: { marginBottom: 24 },
+  input: {
+    borderRadius: 10,
+    padding: 14,
+    marginBottom: 8,
   },
   addButton: {
-    backgroundColor: '#fff',
     borderRadius: 10,
-    padding: 15,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 5,
+    padding: 14,
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 8,
   },
-  addButtonText: {
-    color: '#000458',
-    fontWeight: 'bold',
-    marginLeft: 10,
-  },
-  contactRelationship: {
-    fontSize: 12,
-    color: '#000458',
-    opacity: 0.6,
-    marginTop: 2,
-  },
+  addButtonText: { fontWeight: "bold" },
   toggleCard: {
-    backgroundColor: '#fce07a',
-    padding: 15,
-    borderRadius: 10,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10,
+    padding: 14,
+    borderRadius: 12,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
   },
-  toggleTextContainer: {
-    flex: 1,
-    paddingRight: 10,
+  toggleTextContainer: { flex: 1, paddingRight: 10 },
+  toggleTitle: { fontSize: 14, fontWeight: "bold" },
+  toggleSubtitle: { fontSize: 12, marginTop: 2 },
+  linkCard: {
+    padding: 14,
+    borderRadius: 12,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
+    marginTop: 4,
   },
-  toggleTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#000458',
+  linkText: { fontWeight: "700", fontSize: 14 },
+  logoutBtn: {
+    marginTop: 12,
+    borderRadius: 12,
+    padding: 14,
+    alignItems: "center",
   },
-  toggleSubtitle: {
-    fontSize: 12,
-    color: '#000458',
-    opacity: 0.7,
-    marginTop: 2,
-  },
+  logoutText: { fontWeight: "800" },
   footerNote: {
     fontSize: 12,
-    color: '#000458',
-    opacity: 0.7,
-    marginTop: 20,
+    marginTop: 16,
     lineHeight: 18,
   },
 });
