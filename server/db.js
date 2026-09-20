@@ -1,6 +1,9 @@
 const crypto = require("crypto");
 const sql = require("mssql/msnodesqlv8");
 
+// SQL Server helpers — connect, users, login / register.
+
+// Hash passwords before storing (simple SHA-256 for the demo).
 function hashPassword(password) {
   return crypto
     .createHash("sha256")
@@ -9,7 +12,8 @@ function hashPassword(password) {
 }
 
 function buildConnectionString() {
-  const server = process.env.SQLSERVER || "(localdb)\\MSSQLLocalDB";
+  // Override with env vars if you're not on the default local SQL Server.
+  const server = process.env.SQLSERVER || "localhost";
   const database = process.env.SQLDATABASE || "SafetyBuddy";
   const driver = process.env.SQL_DRIVER || "ODBC Driver 17 for SQL Server";
   return `Driver={${driver}};Server=${server};Database=${database};Trusted_Connection=Yes;TrustServerCertificate=Yes;`;
@@ -18,6 +22,7 @@ function buildConnectionString() {
 let poolPromise = null;
 
 async function getPool() {
+  // Reuse one connection pool for the whole process.
   if (!poolPromise) {
     poolPromise = sql.connect({
       connectionString: buildConnectionString(),
@@ -27,6 +32,7 @@ async function getPool() {
 }
 
 function mapUser(row) {
+  // DB uses snake_case; the app expects camelCase.
   return {
     id: Number(row.id),
     email: row.email,
@@ -39,8 +45,10 @@ function mapUser(row) {
 async function seedUsers() {
   const pool = await getPool();
   const countResult = await pool.request().query("SELECT COUNT(*) AS c FROM dbo.users");
+  // Already have users — don't insert demo accounts again.
   if (countResult.recordset[0].c > 0) return;
 
+  // One demo account per role for local testing.
   const seeds = [
     ["student@safetybuddy.campus", "Amahle Student", "student", "Student123!"],
     ["security@safetybuddy.campus", "Officer N. Jacobs", "security_staff", "Security123!"],
@@ -72,6 +80,7 @@ async function loginUser(email, password) {
   const row = result.recordset[0];
   if (!row) return { ok: false, error: "No account found for that email." };
 
+  // Compare the hashed password, never store plain text.
   if (row.password_hash !== hashPassword(password)) {
     return { ok: false, error: "Incorrect password. Please try again." };
   }
@@ -95,6 +104,7 @@ async function registerUser({ email, password, fullName, role }) {
   }
 
   const pool = await getPool();
+  // Reject duplicate emails before we try to insert.
   const existing = await pool
     .request()
     .input("email", sql.NVarChar, cleanedEmail)
@@ -104,6 +114,7 @@ async function registerUser({ email, password, fullName, role }) {
     return { ok: false, error: "An account with this email already exists." };
   }
 
+  // OUTPUT returns the new row so we can send it back to the app.
   const insert = await pool
     .request()
     .input("email", sql.NVarChar, cleanedEmail)
@@ -120,6 +131,7 @@ async function registerUser({ email, password, fullName, role }) {
 }
 
 async function listUsers() {
+  // Newest accounts first — used by the admin screen.
   const pool = await getPool();
   const result = await pool
     .request()
@@ -130,6 +142,7 @@ async function listUsers() {
 }
 
 async function getUserById(id) {
+  // Look up one account by id (e.g. /auth/me).
   const pool = await getPool();
   const result = await pool
     .request()

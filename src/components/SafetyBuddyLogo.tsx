@@ -1,18 +1,31 @@
+import { useTheme } from "@/context/ThemeContext";
 import { StyleSheet, Text, View } from "react-native";
-import { COLORS } from "@/constants/theme";
 
 type Props = { size?: "sm" | "md" | "lg" };
 
+/** Brand mark — always yellow shield on white (not theme-dependent). */
 export function SafetyBuddyLogo({ size = "lg" }: Props) {
+  const { colors } = useTheme();
   const scale = size === "sm" ? 0.55 : size === "md" ? 0.75 : 1;
+  const brandYellow = "#FFD24C";
+  const brandNavy = "#000458";
 
   return (
-    <View style={[styles.frame, { transform: [{ scale }] }]}>
-      <View style={styles.shield}>
-        <Text style={styles.safety}>SAFETY</Text>
-        <Text style={styles.buddy}>BUDDY</Text>
-        <View style={styles.ribbon}>
-          <Text style={styles.ribbonText}>CAMPUS SECURITY APP</Text>
+    <View style={[styles.frame, { transform: [{ scale }], borderColor: brandNavy }]}>
+      <View style={[styles.shield, { borderColor: brandNavy }]}>
+        <Text style={[styles.safety, { color: brandNavy }]}>SAFETY</Text>
+        <Text
+          style={[
+            styles.buddy,
+            { color: brandYellow, textShadowColor: brandNavy },
+          ]}
+        >
+          BUDDY
+        </Text>
+        <View style={[styles.ribbon, { backgroundColor: brandNavy }]}>
+          <Text style={[styles.ribbonText, { color: colors.white }]}>
+            CAMPUS SECURITY APP
+          </Text>
         </View>
       </View>
     </View>
@@ -21,49 +34,41 @@ export function SafetyBuddyLogo({ size = "lg" }: Props) {
 
 const styles = StyleSheet.create({
   frame: {
-    backgroundColor: COLORS.white,
+    backgroundColor: "#FFFFFF",
     padding: 18,
     borderRadius: 8,
     borderWidth: 3,
-    borderColor: COLORS.navy,
     alignItems: "center",
   },
   shield: {
     borderWidth: 3,
-    borderColor: COLORS.navy,
     borderRadius: 12,
     paddingVertical: 16,
     paddingHorizontal: 22,
     alignItems: "center",
-    backgroundColor: COLORS.white,
+    backgroundColor: "#FFFFFF",
     minWidth: 220,
   },
   safety: {
-    color: COLORS.navy,
     fontSize: 34,
     fontWeight: "900",
     letterSpacing: 1,
   },
   buddy: {
-    color: COLORS.bg,
     fontSize: 34,
     fontWeight: "900",
     letterSpacing: 1,
-    textShadowColor: COLORS.navy,
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 1,
-    // outline effect via navy border simulation
     marginTop: -2,
   },
   ribbon: {
     marginTop: 10,
-    backgroundColor: COLORS.navy,
     paddingHorizontal: 14,
     paddingVertical: 6,
     borderRadius: 4,
   },
   ribbonText: {
-    color: COLORS.white,
     fontSize: 10,
     fontWeight: "800",
     letterSpacing: 1.2,

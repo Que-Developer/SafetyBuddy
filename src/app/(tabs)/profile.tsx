@@ -3,6 +3,7 @@ import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import {
   Alert,
+  Linking,
   ScrollView,
   StyleSheet,
   Switch,
@@ -13,18 +14,28 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "@/context/AuthContext";
+import { useSafetyModes } from "@/context/SafetyModesContext";
 import { useTheme } from "@/context/ThemeContext";
+import { useLocale } from "@/i18n/LocaleContext";
+import { ThemeToggleCard } from "@/components/ThemeToggleCard";
 import {
   loadTrustedContacts,
   saveTrustedContacts,
   type TrustedContact,
 } from "@/services/contacts";
+import {
+  phonesMatch,
+  pickContactFromPhone,
+  toTrustedContact,
+} from "@/services/phoneContacts";
 
 export default function ProfileScreen() {
   const { user, logout } = useAuth();
-  const { colors, selectedTheme, setTheme } = useTheme();
+  const { colors } = useTheme();
+  const { t, locale, setLocale, locales } = useLocale();
+  const modes = useSafetyModes();
+  const scale = modes.scale;
   const [shareLocation, setShareLocation] = useState(true);
-  const [anonReport, setAnonReport] = useState(true);
   const [campusAlerts, setCampusAlerts] = useState(true);
   const [walkWithMe, setWalkWithMe] = useState(true);
   const [contacts, setContacts] = useState<TrustedContact[]>([]);
@@ -32,6 +43,7 @@ export default function ProfileScreen() {
   const [newPhone, setNewPhone] = useState("");
   const [newRelationship, setNewRelationship] = useState("");
   const [newEmail, setNewEmail] = useState("");
+  const [pickingContact, setPickingContact] = useState(false);
 
   useEffect(() => {
     loadTrustedContacts().then(setContacts);
@@ -44,10 +56,7 @@ export default function ProfileScreen() {
 
   const handleAddContact = () => {
     if (!newName.trim() || !newPhone.trim()) {
-      Alert.alert(
-        "Missing info",
-        "Please enter at least a name and phone number."
-      );
+      Alert.alert(t("missingInfo"), t("missingInfoBody"));
       return;
     }
     const contact: TrustedContact = {
@@ -65,6 +74,52 @@ export default function ProfileScreen() {
     setNewEmail("");
   };
 
+  const handlePickFromPhone = async () => {
+    if (pickingContact) return;
+    setPickingContact(true);
+    try {
+      const result = await pickContactFromPhone();
+      if (!result.ok) {
+        if (result.reason === "cancelled") return;
+        if (result.reason === "permission") {
+          Alert.alert(t("contactsPermissionTitle"), t("contactsPermissionBody"), [
+            { text: t("cancel"), style: "cancel" },
+            {
+              text: t("openSettings"),
+              onPress: () => Linking.openSettings().catch(() => undefined),
+            },
+          ]);
+          return;
+        }
+        if (result.reason === "no_phone") {
+          Alert.alert(t("contactNoPhoneTitle"), t("contactNoPhoneBody"));
+          return;
+        }
+        Alert.alert(t("contactsUnsupportedTitle"), t("contactsUnsupportedBody"));
+        return;
+      }
+
+      if (contacts.some((c) => phonesMatch(c.phone, result.contact.phone))) {
+        Alert.alert(t("contactAlreadyAddedTitle"), t("contactAlreadyAddedBody"));
+        setNewName(result.contact.name);
+        setNewPhone(result.contact.phone);
+        setNewEmail(result.contact.email);
+        setNewRelationship(result.contact.relationship);
+        return;
+      }
+
+      const trusted = toTrustedContact(result.contact);
+      await persist([...contacts, trusted]);
+      setNewName("");
+      setNewPhone("");
+      setNewRelationship("");
+      setNewEmail("");
+      Alert.alert(t("trustedContacts"), t("contactAddedFromPhone"));
+    } finally {
+      setPickingContact(false);
+    }
+  };
+
   return (
     <SafeAreaView
       style={[styles.container, { backgroundColor: colors.bg }]}
@@ -76,7 +131,7 @@ export default function ProfileScreen() {
       >
         <View style={styles.header}>
           <Text style={[styles.headerTitle, { color: colors.text }]}>
-            Trusted contacts & privacy
+            {t("trustedContactsPrivacy")}
           </Text>
           <Text style={[styles.headerSubtitle, { color: colors.textMuted }]}>
             {user?.fullName} · {user?.email}
@@ -84,7 +139,7 @@ export default function ProfileScreen() {
         </View>
 
         <Text style={[styles.sectionTitle, { color: colors.navy }]}>
-          TRUSTED CONTACTS
+          {t("trustedContacts").toUpperCase()}
         </Text>
         {contacts.map((contact) => (
           <View
@@ -113,12 +168,48 @@ export default function ProfileScreen() {
         ))}
 
         <View style={styles.addContactForm}>
+          <TouchableOpacity
+            style={[
+              styles.pickButton,
+              {
+                backgroundColor: colors.card,
+                borderColor: colors.navy,
+                opacity: pickingContact ? 0.7 : 1,
+              },
+            ]}
+            onPress={handlePickFromPhone}
+            disabled={pickingContact}
+            accessibilityRole="button"
+            accessibilityLabel={t("pickFromPhone")}
+            accessibilityHint={t("pickFromPhoneSub")}
+          >
+            <Ionicons name="people-outline" size={20} color={colors.navy} />
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.pickButtonTitle, { color: colors.text }]}>
+                {t("pickFromPhone")}
+              </Text>
+              <Text style={[styles.pickButtonSub, { color: colors.textMuted }]}>
+                {t("pickFromPhoneSub")}
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.navy} />
+          </TouchableOpacity>
+
+          <Text
+            style={[
+              styles.orDivider,
+              { color: colors.textDim },
+            ]}
+          >
+            — {t("orEnterManually")} —
+          </Text>
+
           <TextInput
             style={[
               styles.input,
               { backgroundColor: colors.input, color: colors.text },
             ]}
-            placeholder="Name"
+            placeholder={t("namePlaceholder")}
             placeholderTextColor={colors.textDim}
             value={newName}
             onChangeText={setNewName}
@@ -128,7 +219,7 @@ export default function ProfileScreen() {
               styles.input,
               { backgroundColor: colors.input, color: colors.text },
             ]}
-            placeholder="Phone"
+            placeholder={t("phonePlaceholder")}
             placeholderTextColor={colors.textDim}
             keyboardType="phone-pad"
             value={newPhone}
@@ -139,7 +230,7 @@ export default function ProfileScreen() {
               styles.input,
               { backgroundColor: colors.input, color: colors.text },
             ]}
-            placeholder="Email"
+            placeholder={t("emailPlaceholder")}
             placeholderTextColor={colors.textDim}
             keyboardType="email-address"
             value={newEmail}
@@ -150,7 +241,7 @@ export default function ProfileScreen() {
               styles.input,
               { backgroundColor: colors.input, color: colors.text },
             ]}
-            placeholder="Relationship"
+            placeholder={t("relationshipPlaceholder")}
             placeholderTextColor={colors.textDim}
             value={newRelationship}
             onChangeText={setNewRelationship}
@@ -161,121 +252,182 @@ export default function ProfileScreen() {
           >
             <Ionicons name="person-add-outline" size={20} color={colors.bg} />
             <Text style={[styles.addButtonText, { color: colors.bg }]}>
-              Add trusted contact
+              {t("addTrustedContact")}
             </Text>
           </TouchableOpacity>
         </View>
 
         <Text style={[styles.sectionTitle, { color: colors.navy }]}>
-          APPEARANCE
+          {t("appearance").toUpperCase()}
         </Text>
-        <View style={[styles.themeCard, { backgroundColor: colors.card }]}>
-          <Text style={[styles.toggleTitle, { color: colors.text }]}>
-            Light & dark theme
-          </Text>
-          <Text
-            style={[
-              styles.toggleSubtitle,
-              { color: colors.textMuted, marginBottom: 12 },
-            ]}
+        <ThemeToggleCard />
+
+        <Text style={[styles.sectionTitle, { color: colors.navy }]}>
+          {t("safetyFeatures").toUpperCase()}
+        </Text>
+        {(
+          [
+            [t("qrScan"), t("qrScanSub"), "qr-code-outline", "/qr-scan"],
+            [t("safeRoutes"), t("safeRoutesSub"), "map-outline", "/safe-routes"],
+            [
+              t("offlineEmergency"),
+              t("offlineEmergencySub"),
+              "cloud-offline-outline",
+              "/offline-emergency",
+            ],
+            [t("chatbot"), t("chatbotSub"), "chatbubbles-outline", "/chatbot"],
+            [t("heatmap"), t("heatmapSub"), "flame-outline", "/heatmap"],
+            [t("wearable"), t("wearableSub"), "watch-outline", "/wearable-panic"],
+            [
+              t("securityLink"),
+              t("securityLinkSub"),
+              "shield-checkmark-outline",
+              "/security-integration",
+            ],
+            [t("walkWithMe"), t("walkWithMeSub"), "walk-outline", "/(tabs)/map"],
+          ] as const
+        ).map(([title, sub, icon, href]) => (
+          <TouchableOpacity
+            key={href}
+            style={[styles.linkCard, { backgroundColor: colors.card }]}
+            onPress={() => router.push(href as never)}
+            accessibilityRole="button"
+            accessibilityLabel={title}
           >
-            Yellow for day · Navy for night
-          </Text>
-          <View
-            style={[
-              styles.themeToggleTrack,
-              { backgroundColor: colors.input, borderColor: colors.tileBorder },
-            ]}
-          >
-            <TouchableOpacity
-              accessibilityRole="button"
-              accessibilityState={{ selected: selectedTheme === "yellow" }}
-              accessibilityLabel="Light yellow theme"
-              activeOpacity={0.85}
-              onPress={() => setTheme("yellow")}
-              style={[
-                styles.themeToggleOption,
-                selectedTheme === "yellow" && {
-                  backgroundColor: "#FFD24C",
-                },
-              ]}
-            >
-              <Ionicons
-                name="sunny"
-                size={16}
-                color={selectedTheme === "yellow" ? "#000458" : colors.textMuted}
-              />
-              <Text
+            <View style={styles.featureRow}>
+              <Ionicons name={icon} size={22} color={colors.navy} />
+              <View style={{ flex: 1 }}>
+                <Text
+                  style={[
+                    styles.linkText,
+                    { color: colors.text, fontSize: 14 * scale },
+                  ]}
+                >
+                  {title}
+                </Text>
+                <Text
+                  style={[
+                    styles.toggleSubtitle,
+                    { color: colors.textMuted, fontSize: 12 * scale },
+                  ]}
+                >
+                  {sub}
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={colors.navy} />
+            </View>
+          </TouchableOpacity>
+        ))}
+
+        <Text style={[styles.sectionTitle, { color: colors.navy, marginTop: 12 }]}>
+          {t("language").toUpperCase()}
+        </Text>
+        <View style={styles.langGrid}>
+          {locales.map((l) => {
+            const active = locale === l.code;
+            return (
+              <TouchableOpacity
+                key={l.code}
                 style={[
-                  styles.themeToggleLabel,
+                  styles.langChip,
                   {
-                    color:
-                      selectedTheme === "yellow" ? "#000458" : colors.textMuted,
+                    backgroundColor: active ? colors.navy : colors.card,
+                    borderColor: colors.navy,
                   },
                 ]}
+                onPress={() => setLocale(l.code)}
+                accessibilityRole="button"
+                accessibilityState={{ selected: active }}
               >
-                Light
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              accessibilityRole="button"
-              accessibilityState={{ selected: selectedTheme === "dark" }}
-              accessibilityLabel="Dark navy theme"
-              activeOpacity={0.85}
-              onPress={() => setTheme("dark")}
-              style={[
-                styles.themeToggleOption,
-                selectedTheme === "dark" && {
-                  backgroundColor: "#002B5B",
-                },
-              ]}
-            >
-              <Ionicons
-                name="moon"
-                size={16}
-                color={selectedTheme === "dark" ? "#FFD24C" : colors.textMuted}
-              />
-              <Text
-                style={[
-                  styles.themeToggleLabel,
-                  {
-                    color:
-                      selectedTheme === "dark" ? "#FFD24C" : colors.textMuted,
-                  },
-                ]}
-              >
-                Dark
-              </Text>
-            </TouchableOpacity>
-          </View>
+                <Text
+                  style={{
+                    color: active ? colors.bg : colors.text,
+                    fontWeight: "800",
+                    fontSize: 12 * scale,
+                  }}
+                >
+                  {l.nativeLabel}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
         </View>
 
         <Text style={[styles.sectionTitle, { color: colors.navy }]}>
-          PRIVACY & PERMISSIONS
+          {t("safetyModes").toUpperCase()}
+        </Text>
+        {modes.batteryLow && (
+          <View style={[styles.modeBanner, { backgroundColor: colors.card }]}>
+            <Ionicons name="battery-half" size={18} color={colors.caution} />
+            <Text style={{ color: colors.text, flex: 1, fontWeight: "700", fontSize: 12 * scale }}>
+              {t("batteryLow")}
+              {modes.batteryLevel != null
+                ? ` (${Math.round(modes.batteryLevel * 100)}%)`
+                : ""}
+            </Text>
+          </View>
+        )}
+        {(
+          [
+            ["accessibilityMode", t("accessibility"), t("accessibilitySub")],
+            ["lowDataMode", t("lowData"), t("lowDataSub")],
+            ["batteryAwareMode", t("batteryMode"), t("batteryModeSub")],
+            ["silentPanicMode", t("silentPanic"), t("silentPanicSub")],
+            ["anonymousDefault", t("anonymousReport"), t("anonymousReportSub")],
+          ] as const
+        ).map(([key, title, subtitle]) => (
+          <View
+            key={key}
+            style={[styles.toggleCard, { backgroundColor: colors.card }]}
+          >
+            <View style={styles.toggleTextContainer}>
+              <Text
+                style={[
+                  styles.toggleTitle,
+                  { color: colors.text, fontSize: 14 * scale },
+                ]}
+              >
+                {title}
+              </Text>
+              <Text
+                style={[
+                  styles.toggleSubtitle,
+                  { color: colors.textMuted, fontSize: 12 * scale },
+                ]}
+              >
+                {subtitle}
+              </Text>
+            </View>
+            <Switch
+              value={modes[key]}
+              onValueChange={(v) => modes.setMode(key, v)}
+              trackColor={{ false: colors.textDim, true: colors.navy }}
+              thumbColor={colors.white}
+              accessibilityLabel={title}
+            />
+          </View>
+        ))}
+
+        <Text style={[styles.sectionTitle, { color: colors.navy, marginTop: 8 }]}>
+          {t("privacyPermissions").toUpperCase()}
         </Text>
         {(
           [
             [
-              "Share my location during Help / Walk With Me",
-              "Used only while an alert or journey is active",
+              t("shareLocationTitle"),
+              t("shareLocationSub"),
               shareLocation,
               setShareLocation,
             ],
             [
-              "Anonymous report by default",
-              "Your name won't be attached to reports",
-              anonReport,
-              setAnonReport,
-            ],
-            [
-              "Campus safety alerts",
-              "Notifications about incidents & closures",
+              t("campusAlertsPermTitle"),
+              t("campusAlertsPermSub"),
               campusAlerts,
               setCampusAlerts,
             ],
             [
-              "Enable Walk With Me",
-              "Trusted contacts receive journey updates",
+              t("enableWalkTitle"),
+              t("enableWalkSub"),
               walkWithMe,
               setWalkWithMe,
             ],
@@ -296,7 +448,7 @@ export default function ProfileScreen() {
             <Switch
               value={value}
               onValueChange={onChange}
-              trackColor={{ false: "#ccc", true: colors.navy }}
+              trackColor={{ false: colors.textDim, true: colors.navy }}
               thumbColor={colors.white}
             />
           </View>
@@ -306,10 +458,12 @@ export default function ProfileScreen() {
           style={[styles.linkCard, { backgroundColor: colors.cardAlt }]}
           onPress={() => router.push("/privacy")}
         >
-          <Text style={[styles.linkText, { color: colors.text }]}>
-            Open full privacy notice
-          </Text>
-          <Ionicons name="chevron-forward" size={18} color={colors.navy} />
+          <View style={styles.featureRow}>
+            <Text style={[styles.linkText, { color: colors.text, flex: 1 }]}>
+              {t("openPrivacyNotice")}
+            </Text>
+            <Ionicons name="chevron-forward" size={18} color={colors.navy} />
+          </View>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -319,11 +473,13 @@ export default function ProfileScreen() {
             router.replace("/login");
           }}
         >
-          <Text style={[styles.logoutText, { color: colors.bg }]}>Log out</Text>
+          <Text style={[styles.logoutText, { color: colors.bg }]}>
+            {t("logOut")}
+          </Text>
         </TouchableOpacity>
 
         <Text style={[styles.footerNote, { color: colors.textMuted }]}>
-          Your account is stored in Microsoft SQL Server (SafetyBuddy database).
+          {t("accountStoredNote")}
         </Text>
         <View style={{ height: 100 }} />
       </ScrollView>
@@ -355,6 +511,25 @@ const styles = StyleSheet.create({
   contactPhone: { fontSize: 13, marginTop: 2 },
   contactMeta: { fontSize: 12, marginTop: 2 },
   addContactForm: { marginBottom: 24 },
+  pickButton: {
+    borderRadius: 12,
+    borderWidth: 1.5,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginBottom: 12,
+  },
+  pickButtonTitle: { fontSize: 15, fontWeight: "800" },
+  pickButtonSub: { fontSize: 12, marginTop: 2 },
+  orDivider: {
+    textAlign: "center",
+    fontSize: 12,
+    fontWeight: "700",
+    marginBottom: 12,
+    letterSpacing: 0.4,
+  },
   input: {
     borderRadius: 10,
     padding: 14,
@@ -408,11 +583,33 @@ const styles = StyleSheet.create({
   linkCard: {
     padding: 14,
     borderRadius: 12,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
     marginBottom: 8,
     marginTop: 4,
+  },
+  featureRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  langGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginBottom: 16,
+  },
+  langChip: {
+    borderWidth: 1.5,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  modeBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 8,
   },
   linkText: { fontWeight: "700", fontSize: 14 },
   logoutBtn: {

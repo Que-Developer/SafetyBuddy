@@ -1,7 +1,15 @@
 import { useTheme } from "@/context/ThemeContext";
 import { EMERGENCY_CONTACTS, SUPPORT_SERVICES } from "@/data/mockData";
+import { useLocale } from "@/i18n/LocaleContext";
 import { Ionicons } from "@expo/vector-icons";
-import { Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import {
+  Linking,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 function dial(number: string) {
@@ -10,6 +18,7 @@ function dial(number: string) {
 
 export default function EmergencyScreen() {
   const { colors } = useTheme();
+  const { t } = useLocale();
 
   return (
     <SafeAreaView
@@ -18,8 +27,7 @@ export default function EmergencyScreen() {
     >
       <ScrollView contentContainerStyle={styles.scroll}>
         <Text style={[styles.intro, { color: colors.textMuted }]}>
-          Quick access to campus security, residence support, and wellness
-          services. One tap places a real phone call on your device.
+          {t("emergencyIntro")}
         </Text>
 
         {EMERGENCY_CONTACTS.map((c) => (
@@ -28,18 +36,26 @@ export default function EmergencyScreen() {
             style={[styles.card, { backgroundColor: colors.card }]}
             onPress={() => dial(c.number)}
           >
-            <View style={[styles.icon, { backgroundColor: colors.accent }]}>
+            <View style={[styles.icon, { backgroundColor: colors.navy }]}>
               <Ionicons name="call" size={20} color={colors.bg} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={[styles.title, { color: colors.text }]}>{c.label}</Text>
-              <Text style={[styles.number, { color: colors.textMuted }]}>{c.number}</Text>
+              <Text style={[styles.title, { color: colors.text }]}>
+                {c.label}
+              </Text>
+              <Text style={[styles.number, { color: colors.textMuted }]}>
+                {c.number}
+              </Text>
             </View>
-            <Text style={[styles.tap, { color: colors.accent }]}>TAP TO CALL</Text>
+            <Text style={[styles.tap, { color: colors.navy }]}>
+              {t("tapToCall")}
+            </Text>
           </TouchableOpacity>
         ))}
 
-        <Text style={[styles.section, { color: colors.text }]}>More support</Text>
+        <Text style={[styles.section, { color: colors.text }]}>
+          {t("moreSupport")}
+        </Text>
         {SUPPORT_SERVICES.map((s) => (
           <View
             key={s.id}
@@ -49,7 +65,7 @@ export default function EmergencyScreen() {
             <Text style={[styles.detail, { color: colors.textMuted }]}>
               {s.detail}
             </Text>
-            <Text style={[styles.action, { color: colors.accent }]}>
+            <Text style={[styles.action, { color: colors.navy }]}>
               {s.action}
             </Text>
           </View>
@@ -87,11 +103,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
     marginBottom: 10,
   },
-  supportCard: {
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 8,
-  },
-  detail: { fontSize: 13, marginTop: 4, lineHeight: 18 },
-  action: { fontWeight: "700", marginTop: 6, fontSize: 13 },
+  supportCard: { borderRadius: 14, padding: 14, marginBottom: 10 },
+  detail: { fontSize: 13, lineHeight: 18, marginTop: 4 },
+  action: { fontWeight: "700", fontSize: 12, marginTop: 6 },
 });

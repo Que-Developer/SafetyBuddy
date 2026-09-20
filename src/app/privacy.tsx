@@ -1,43 +1,55 @@
-import { COLORS } from "@/constants/theme";
+import { useTheme } from "@/context/ThemeContext";
+import { useLocale } from "@/i18n/LocaleContext";
 import { PRIVACY_SECTIONS } from "@/data/mockData";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function PrivacyScreen() {
+  const { colors } = useTheme();
+  const { t } = useLocale();
+
   return (
-    <SafeAreaView style={styles.safe} edges={["bottom"]}>
+    <SafeAreaView
+      style={[styles.safe, { backgroundColor: colors.bg }]}
+      edges={["bottom"]}
+    >
       <ScrollView contentContainerStyle={styles.scroll}>
-        <Text style={styles.heading}>Privacy notice</Text>
-        <Text style={styles.intro}>
-          SafetyBuddy is built for dignity and privacy. Below is how a production
-          deployment would handle your information under POPIA-aligned principles.
+        <Text style={[styles.heading, { color: colors.text }]}>
+          {t("privacyNoticeTitle")}
+        </Text>
+        <Text style={[styles.intro, { color: colors.textMuted }]}>
+          {t("privacyIntro")}
         </Text>
 
         {PRIVACY_SECTIONS.map((section) => (
-          <View key={section.title} style={styles.card}>
-            <Text style={styles.title}>{section.title}</Text>
-            <Text style={styles.body}>{section.body}</Text>
+          <View
+            key={section.title}
+            style={[styles.card, { backgroundColor: colors.card }]}
+          >
+            <Text style={[styles.title, { color: colors.navy }]}>
+              {section.title}
+            </Text>
+            <Text style={[styles.body, { color: colors.text }]}>
+              {section.body}
+            </Text>
           </View>
         ))}
 
-        <View style={styles.card}>
-          <Text style={styles.title}>Reliability & edge cases</Text>
-          <Text style={styles.body}>
-            If you have no data, emergency numbers remain available for voice
-            calls. If GPS is unavailable, the last known or selected campus zone
-            is used. If an alert fails to send, the app shows a retry path and
-            still offers one-tap calling. Low battery: keep Help and Call
-            Security on the first screen. Accidental alerts: hold-to-activate plus
-            a cancel window before dispatch.
+        <View style={[styles.card, { backgroundColor: colors.card }]}>
+          <Text style={[styles.title, { color: colors.navy }]}>
+            {t("privacyReliabilityTitle")}
+          </Text>
+          <Text style={[styles.body, { color: colors.text }]}>
+            {t("privacyReliabilityBody")}
           </Text>
         </View>
 
-        <View style={styles.card}>
-          <Text style={styles.title}>Security (production)</Text>
-          <Text style={styles.body}>
-            Official university authentication, encrypted communication, secure
-            storage, audit logs, and restricted access to sensitive emergency
-            records would be required before live student use.
+        <View style={[styles.card, { backgroundColor: colors.card }]}>
+          <Text style={[styles.title, { color: colors.navy }]}>
+            {t("privacySecurityTitle")}
+          </Text>
+          <Text style={[styles.body, { color: colors.text }]}>
+            {t("privacySecurityBody")}
           </Text>
         </View>
       </ScrollView>
@@ -46,16 +58,15 @@ export default function PrivacyScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: COLORS.bg },
+  safe: { flex: 1 },
   scroll: { padding: 18, paddingBottom: 40 },
-  heading: { color: COLORS.text, fontSize: 24, fontWeight: "900", marginBottom: 8 },
-  intro: { color: COLORS.textMuted, fontSize: 14, lineHeight: 21, marginBottom: 16 },
+  heading: { fontSize: 24, fontWeight: "900", marginBottom: 8 },
+  intro: { fontSize: 14, lineHeight: 21, marginBottom: 16 },
   card: {
-    backgroundColor: COLORS.card,
     borderRadius: 14,
     padding: 14,
     marginBottom: 10,
   },
-  title: { color: COLORS.accent, fontWeight: "800", fontSize: 14, marginBottom: 6 },
-  body: { color: COLORS.text, opacity: 0.9, fontSize: 13, lineHeight: 20 },
+  title: { fontWeight: "800", fontSize: 14, marginBottom: 6 },
+  body: { opacity: 0.95, fontSize: 13, lineHeight: 20 },
 });

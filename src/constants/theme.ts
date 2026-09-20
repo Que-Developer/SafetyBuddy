@@ -1,4 +1,5 @@
-/** Default app palette — matches navy (dark) theme layout. */
+/** Default dark-theme snapshot for non-UI helpers (shadows, alert level colors).
+ *  UI screens must use `useTheme().colors` so yellow/dark switching works. */
 export const COLORS = {
   bg: "#002B5B",
   bgDeep: "#001A3A",
