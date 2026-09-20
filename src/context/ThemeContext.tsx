@@ -1,4 +1,7 @@
-import React, { createContext, useContext, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import React, { createContext, useContext, useEffect, useState } from 'react';
+
+const THEME_KEY = 'safetybuddy.theme';
 
 // --- THEME COLOR PALETTES ---
 const YELLOW_THEME = {
@@ -14,7 +17,7 @@ const YELLOW_THEME = {
   white: '#FFFFFF',
   black: '#000000',
   link: '#0A7A6B',
-  accent: '#000458',       // <-- Used for icons & highlights
+  accent: '#000458',
   navy: '#000458',
   tile: '#FFFFFF',
   tileBorder: 'rgba(0,4,88,0.1)',
@@ -41,22 +44,21 @@ const DARK_THEME = {
   success: '#22C55E',
 };
 
-
+type ThemeName = 'yellow' | 'dark';
 
 // --- CONTEXT TYPE ---
 type ThemeContextType = {
   colors: typeof YELLOW_THEME;
   ready: boolean;
   hasChosen: boolean;
-  selectedTheme: 'yellow' | 'dark';
-  setTheme: (theme: 'yellow' | 'dark') => void;
+  selectedTheme: ThemeName;
+  setTheme: (theme: ThemeName) => void;
 };
 
 // --- CREATE CONTEXT ---
-// hasChosen starts as false, which makes the splash screen go to /theme-select first.
 const ThemeContext = createContext<ThemeContextType>({
   colors: YELLOW_THEME,
-  ready: true,
+  ready: false,
   hasChosen: false,
   selectedTheme: 'yellow',
   setTheme: () => {},
@@ -64,13 +66,32 @@ const ThemeContext = createContext<ThemeContextType>({
 
 // --- PROVIDER COMPONENT ---
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
+  const [ready, setReady] = useState(false);
   const [hasChosen, setHasChosen] = useState(false);
-  const [selectedTheme, setSelectedTheme] = useState<'yellow' | 'dark'>('yellow');
+  const [selectedTheme, setSelectedTheme] = useState<ThemeName>('yellow');
 
-  // Called from the Theme Selection page when user taps Continue
-  const setTheme = (theme: 'yellow' | 'dark') => {
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const stored = await AsyncStorage.getItem(THEME_KEY);
+        if (!cancelled && (stored === 'yellow' || stored === 'dark')) {
+          setSelectedTheme(stored);
+          setHasChosen(true);
+        }
+      } finally {
+        if (!cancelled) setReady(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const setTheme = (theme: ThemeName) => {
     setSelectedTheme(theme);
     setHasChosen(true);
+    void AsyncStorage.setItem(THEME_KEY, theme);
   };
 
   const colors = selectedTheme === 'dark' ? DARK_THEME : YELLOW_THEME;
@@ -79,7 +100,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     <ThemeContext.Provider
       value={{
         colors,
-        ready: true,
+        ready,
         hasChosen,
         selectedTheme,
         setTheme,

@@ -1,27 +1,28 @@
 import { Redirect, useSegments } from "expo-router";
 import { ActivityIndicator, View } from "react-native";
 import { useAuth } from "@/context/AuthContext";
-import { COLORS } from "@/constants/theme";
+import { useTheme } from "@/context/ThemeContext";
 import { isSecurityRole } from "@/services/database";
 
 const PUBLIC = new Set(["index", "splash", "login", "theme-select"]);
 
 export function AuthGate({ children }: { children: React.ReactNode }) {
   const { ready, user, isAdmin } = useAuth();
+  const { colors, ready: themeReady } = useTheme();
   const segments = useSegments();
   const root = String(segments[0] ?? "splash");
 
-  if (!ready) {
+  if (!ready || !themeReady) {
     return (
       <View
         style={{
           flex: 1,
           alignItems: "center",
           justifyContent: "center",
-          backgroundColor: COLORS.bg,
+          backgroundColor: colors.bg,
         }}
       >
-        <ActivityIndicator color={COLORS.navy} size="large" />
+        <ActivityIndicator color={colors.navy} size="large" />
       </View>
     );
   }

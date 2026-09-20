@@ -134,7 +134,7 @@ export default function PanicScreen() {
         style={[styles.cancelBtn, { backgroundColor: colors.navy }]}
         onPress={cancel}
       >
-        <Text style={[styles.cancelText, { color: colors.bg }]}>
+        <Text style={[styles.cancelText, { color: colors.white }]}>
           I'm safe — cancel alert
         </Text>
       </TouchableOpacity>
