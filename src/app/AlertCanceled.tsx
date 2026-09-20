@@ -31,7 +31,7 @@ export default function AlertCanceledScreen() {
           style={[styles.homeButton, { backgroundColor: colors.accent }]}
           onPress={() => router.replace("/(tabs)/home")}
         >
-          <Text style={[styles.homeButtonText, { color: colors.black }]}> 
+          <Text style={[styles.homeButtonText, { color: colors.white }]}> 
             Return to Home
           </Text>
         </TouchableOpacity>
