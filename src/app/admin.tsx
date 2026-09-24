@@ -137,7 +137,7 @@ export default function AdminScreen() {
 
         <TouchableOpacity
           style={[styles.heatCard, { backgroundColor: colors.card }, CARD_SHADOW]}
-          onPress={() => router.push("/heatmap")}
+          onPress={() => router.push("../heatmap")}
           accessibilityRole="button"
           accessibilityLabel={t("heatmap")}
         >

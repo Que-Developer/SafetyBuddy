@@ -129,7 +129,7 @@ export default function PanicScreen() {
 
       <TouchableOpacity
         style={[styles.offlineLink, { minHeight: a11y.hit }]}
-        onPress={() => router.push("/offline-emergency")}
+        onPress={() => router.push("../offline-emergency")}
         accessibilityRole="link"
         accessibilityLabel={t("offlineEmergency")}
       >

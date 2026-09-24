@@ -245,7 +245,7 @@ export default function PanicCountdownAlert() {
       </View>
 
       <TouchableOpacity
-        onPress={() => router.push("/offline-emergency")}
+        onPress={() => router.push("../offline-emergency")}
         style={styles.retryHint}
       >
         <Text style={{ color: colors.navy, fontSize: 13, fontWeight: "800" }}>

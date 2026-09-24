@@ -1,3 +1,10 @@
+import { useTheme } from "@/context/ThemeContext";
+import {
+  findCheckpointByCode,
+  QR_CHECKPOINTS,
+  type QrCheckpoint,
+} from "@/data/featureData";
+import { useLocale } from "@/i18n/LocaleContext";
 import { Ionicons } from "@expo/vector-icons";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { useState } from "react";
@@ -11,13 +18,6 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useTheme } from "@/context/ThemeContext";
-import { useLocale } from "@/i18n/LocaleContext";
-import {
-  findCheckpointByCode,
-  QR_CHECKPOINTS,
-  type QrCheckpoint,
-} from "@/data/featureData";
 
 export default function QrScanScreen() {
   const { colors } = useTheme();

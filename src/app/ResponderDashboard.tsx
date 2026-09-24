@@ -306,7 +306,7 @@ export default function ResponderDashboard() {
 
           <TouchableOpacity
             style={[styles.adminBanner, { backgroundColor: colors.card }, CARD_SHADOW]}
-            onPress={() => router.push("/heatmap")}
+            onPress={() => router.push("../heatmap")}
           >
             <Ionicons name="flame-outline" size={18} color={colors.navy} />
             <Text style={[styles.adminBannerText, { color: colors.text }]}>
