@@ -35,5 +35,7 @@ Configured in `server/.env`:
 | Role | Email | Password |
 |------|--------|----------|
 | Student | student@safetybuddy.campus | Student123! |
+| Student | student2@safetybuddy.campus | Student123! |
+| Student | student3@safetybuddy.campus | Student123! |
 | Security staff | security@safetybuddy.campus | Security123! |
 | Security admin | admin@safetybuddy.campus | Admin123! |

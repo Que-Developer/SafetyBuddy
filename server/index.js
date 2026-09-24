@@ -302,7 +302,7 @@ app.patch(
 
 async function start() {
   await getPool();
-  // First boot: add demo users if the table is empty.
+  // First boot (and later): add any missing demo users.
   await seedUsers();
   // Make sure panic_alerts exists before we take traffic.
   await ensurePanicAlertsTable();

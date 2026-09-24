@@ -44,18 +44,24 @@ function mapUser(row) {
 
 async function seedUsers() {
   const pool = await getPool();
-  const countResult = await pool.request().query("SELECT COUNT(*) AS c FROM dbo.users");
-  // Already have users — don't insert demo accounts again.
-  if (countResult.recordset[0].c > 0) return;
 
-  // One demo account per role for local testing.
+  // Demo accounts for local testing (insert any that are still missing).
   const seeds = [
     ["student@safetybuddy.campus", "Amahle Student", "student", "Student123!"],
+    ["student2@safetybuddy.campus", "Lerato Student", "student", "Student123!"],
+    ["student3@safetybuddy.campus", "Jordan Student", "student", "Student123!"],
     ["security@safetybuddy.campus", "Officer N. Jacobs", "security_staff", "Security123!"],
     ["admin@safetybuddy.campus", "Admin Support Staff", "security_admin", "Admin123!"],
   ];
 
+  let added = 0;
   for (const [email, fullName, role, password] of seeds) {
+    const existing = await pool
+      .request()
+      .input("email", sql.NVarChar, email)
+      .query("SELECT id FROM dbo.users WHERE email = @email");
+    if (existing.recordset.length > 0) continue;
+
     await pool
       .request()
       .input("email", sql.NVarChar, email)
@@ -66,8 +72,11 @@ async function seedUsers() {
         INSERT INTO dbo.users (email, full_name, role, password_hash)
         VALUES (@email, @full_name, @role, @password_hash)
       `);
+    added += 1;
   }
-  console.log("Seeded demo users into SQL Server.");
+  if (added > 0) {
+    console.log(`Seeded ${added} demo user(s) into SQL Server.`);
+  }
 }
 
 async function loginUser(email, password) {
