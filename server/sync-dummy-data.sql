@@ -1,7 +1,7 @@
 ﻿/*
 ==============================================================================
   SafetyBuddy — sync dummy data from Safety-Alerts branch database
-  Exported: 2026-09-19T23:37:42.289Z
+  Exported: 2026-09-24T08:18:32.556Z
   Source: localhost / SafetyBuddy
 
   HOW TO USE (on the other machine with the same schema):
@@ -47,11 +47,13 @@ DELETE FROM dbo.[HelpContact];
 DELETE FROM dbo.[CampusZone];
 DELETE FROM dbo.[users];
 
-/* ---- dbo.users (3 rows) ---- */
+/* ---- dbo.users (5 rows) ---- */
 SET IDENTITY_INSERT dbo.[users] ON;
 INSERT INTO dbo.[users] ([id], [email], [full_name], [role], [password_hash], [created_at]) VALUES (1, N'student@safetybuddy.campus', N'Amahle Student', N'student', N'87b74d0646a0ed3e4e4a7dcd7a8e6f3fb874f3a11d12b04a94316f2ac01e67b0', N'2026-09-18 16:10:12.835');
 INSERT INTO dbo.[users] ([id], [email], [full_name], [role], [password_hash], [created_at]) VALUES (2, N'security@safetybuddy.campus', N'Officer N. Jacobs', N'security_staff', N'b9ea7c6a946ac65a013b6df8edca1bc04607b06edf9e2dcf2de58ef92a24050d', N'2026-09-18 16:10:12.847');
 INSERT INTO dbo.[users] ([id], [email], [full_name], [role], [password_hash], [created_at]) VALUES (3, N'admin@safetybuddy.campus', N'Admin Support Staff', N'security_admin', N'dc413e18f96c09b5882f155f1716d143ade8f8502d4156f1e8fd1f116260b3a7', N'2026-09-18 16:10:12.854');
+INSERT INTO dbo.[users] ([id], [email], [full_name], [role], [password_hash], [created_at]) VALUES (4, N'student2@safetybuddy.campus', N'Lerato Student', N'student', N'87b74d0646a0ed3e4e4a7dcd7a8e6f3fb874f3a11d12b04a94316f2ac01e67b0', N'2026-09-20 11:24:51.377');
+INSERT INTO dbo.[users] ([id], [email], [full_name], [role], [password_hash], [created_at]) VALUES (5, N'student3@safetybuddy.campus', N'Jordan Student', N'student', N'87b74d0646a0ed3e4e4a7dcd7a8e6f3fb874f3a11d12b04a94316f2ac01e67b0', N'2026-09-20 11:24:51.395');
 SET IDENTITY_INSERT dbo.[users] OFF;
 
 /* ---- dbo.CampusZone (5 rows) ---- */
