@@ -1,5 +1,9 @@
 # Welcome to your Expo app 👋
 
+1. Always change your "server/.env/" and add your local database's name    - SQLSERVER=(localdb)\MSSQLLocalDB
+2. Then always change db.js and add the same name that's on your local database's name     - const server = process.env.SQLSERVER || (localdb)\\MSSQLLocalDB";
+
+
 This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
 
 ## Get started
