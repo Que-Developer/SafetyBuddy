@@ -1,148 +1,166 @@
-import { useTheme } from '@/context/ThemeContext'; // 👈 imports the context
-import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import { useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useTheme } from "@/context/ThemeContext";
+import { useLocale } from "@/i18n/LocaleContext";
+import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import { useState } from "react";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function ThemeSelectScreen() {
   const router = useRouter();
-  const { setTheme } = useTheme(); // 👈 gets the setter from context
-
-  // 'yellow' is selected by default
-  const [selectedTheme, setSelectedTheme] = useState<'yellow' | 'dark'>('yellow');
+  const { setTheme } = useTheme();
+  const { t } = useLocale();
+  const [selectedTheme, setSelectedTheme] = useState<"yellow" | "dark">(
+    "yellow"
+  );
 
   const handleContinue = () => {
-    setTheme(selectedTheme);   // 👈 saves the choice to context (hasChosen = true)
-    router.replace('/login');  // 👈 goes to login page
+    setTheme(selectedTheme);
+    router.replace("/login");
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-      
-      {/* --- HEADER --- */}
+    <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
       <View style={styles.header}>
         <View style={styles.iconCircle}>
           <Ionicons name="color-palette-outline" size={24} color="#FFD24C" />
         </View>
         <View>
-          <Text style={styles.headerTitle}>THEME</Text>
-          <Text style={styles.headerSubtitle}>Personalization</Text>
+          <Text style={styles.headerTitle}>{t("themeSelectHeader")}</Text>
+          <Text style={styles.headerSubtitle}>{t("themePersonalization")}</Text>
         </View>
       </View>
 
-      {/* --- TITLE SECTION --- */}
       <View style={styles.titleSection}>
-        <Text style={styles.title}>Select between the two</Text>
-        <Text style={styles.subtitle}>
-          Personalize your workspace. High-contrast elements are optimized for accessibility and focus.
-        </Text>
+        <Text style={styles.title}>{t("themeSelectBetween")}</Text>
+        <Text style={styles.subtitle}>{t("themeSelectSubtitle")}</Text>
       </View>
 
-      {/* --- YELLOW THEME CARD --- */}
-      <TouchableOpacity 
+      <TouchableOpacity
         style={[
-          styles.card, 
+          styles.card,
           styles.yellowCard,
-          selectedTheme === 'yellow' && styles.selectedCardBorder
+          selectedTheme === "yellow" && styles.selectedCardBorder,
         ]}
-        onPress={() => setSelectedTheme('yellow')}
+        onPress={() => setSelectedTheme("yellow")}
         activeOpacity={0.8}
+        accessibilityRole="button"
+        accessibilityState={{ selected: selectedTheme === "yellow" }}
+        accessibilityLabel={t("lightThemeA11y")}
       >
         <View style={styles.cardHeader}>
           <Ionicons name="sunny-outline" size={22} color="#000458" />
-          <Text style={styles.yellowCardTitle}>Standard Yellow</Text>
-          
-          {selectedTheme === 'yellow' && (
+          <Text style={styles.yellowCardTitle}>{t("themeYellowTitle")}</Text>
+          {selectedTheme === "yellow" && (
             <View style={styles.checkBadge}>
               <Ionicons name="checkmark" size={14} color="#FFF" />
             </View>
           )}
         </View>
-        <Text style={styles.yellowCardText}>
-          High-contrast golden accents on a warm charcoal foundation. Best for technical data and clarity.
-        </Text>
+        <Text style={styles.yellowCardText}>{t("themeYellowBody")}</Text>
       </TouchableOpacity>
 
-      {/* --- DARK THEME CARD --- */}
-      <TouchableOpacity 
+      <TouchableOpacity
         style={[
-          styles.card, 
+          styles.card,
           styles.darkCard,
-          selectedTheme === 'dark' && styles.selectedCardBorder
+          selectedTheme === "dark" && styles.selectedCardBorder,
         ]}
-        onPress={() => setSelectedTheme('dark')}
+        onPress={() => setSelectedTheme("dark")}
         activeOpacity={0.8}
+        accessibilityRole="button"
+        accessibilityState={{ selected: selectedTheme === "dark" }}
+        accessibilityLabel={t("darkTheme")}
       >
         <View style={styles.cardHeader}>
           <Ionicons name="moon-outline" size={22} color="#FFF" />
-          <Text style={styles.darkCardTitle}>Dark Mode</Text>
-
-          {selectedTheme === 'dark' && (
+          <Text style={styles.darkCardTitle}>{t("themeDarkTitle")}</Text>
+          {selectedTheme === "dark" && (
             <View style={styles.checkBadge}>
               <Ionicons name="checkmark" size={14} color="#FFF" />
             </View>
           )}
         </View>
-        <Text style={styles.darkCardText}>
-          Deep charcoal-neutral foundations with subtle light-grey highlights. Ideal for low-light environments.
-        </Text>
+        <Text style={styles.darkCardText}>{t("themeDarkBody")}</Text>
       </TouchableOpacity>
 
-      {/* --- CONTINUE BUTTON --- */}
       <View style={styles.footer}>
         <TouchableOpacity style={styles.continueBtn} onPress={handleContinue}>
-          <Text style={styles.continueBtnText}>Continue</Text>
+          <Text style={styles.continueBtnText}>{t("continue")}</Text>
         </TouchableOpacity>
       </View>
-
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FFD24C' },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 22,
-    paddingTop: 10,
-    paddingBottom: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0,4,88,0.1)',
-  },
+  container: { flex: 1, backgroundColor: "#FFD24C", paddingHorizontal: 20 },
+  header: { flexDirection: "row", alignItems: "center", marginTop: 12, gap: 12 },
   iconCircle: {
-    backgroundColor: '#000458',
-    width: 45,
-    height: 45,
-    borderRadius: 22.5,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "#000458",
+    alignItems: "center",
+    justifyContent: "center",
   },
-  headerTitle: { fontSize: 14, fontWeight: '800', color: '#000458', letterSpacing: 1 },
-  headerSubtitle: { fontSize: 16, fontWeight: '600', color: '#000458' },
-  titleSection: { paddingHorizontal: 22, paddingTop: 25, paddingBottom: 20 },
-  title: { fontSize: 26, fontWeight: 'bold', color: '#000458', marginBottom: 10 },
-  subtitle: { fontSize: 14, color: '#000458', opacity: 0.8, lineHeight: 20 },
-  card: { marginHorizontal: 22, marginBottom: 15, borderRadius: 18, padding: 20 },
-  selectedCardBorder: { borderWidth: 3, borderColor: '#000458' },
-  yellowCard: { backgroundColor: '#fce07a' },
-  yellowCardTitle: { fontSize: 18, fontWeight: 'bold', color: '#000458', marginLeft: 10, flex: 1 },
-  yellowCardText: { fontSize: 14, color: '#000458', opacity: 0.8, marginTop: 12, lineHeight: 20 },
-  darkCard: { backgroundColor: '#1a2332' },
-  darkCardTitle: { fontSize: 18, fontWeight: 'bold', color: '#FFF', marginLeft: 10, flex: 1 },
-  darkCardText: { fontSize: 14, color: '#FFF', opacity: 0.7, marginTop: 12, lineHeight: 20 },
-  cardHeader: { flexDirection: 'row', alignItems: 'center' },
+  headerTitle: {
+    fontSize: 14,
+    fontWeight: "800",
+    color: "#000458",
+    letterSpacing: 1,
+  },
+  headerSubtitle: { fontSize: 16, fontWeight: "600", color: "#000458" },
+  titleSection: { marginTop: 28, marginBottom: 18 },
+  title: { fontSize: 26, fontWeight: "bold", color: "#000458", marginBottom: 10 },
+  subtitle: { fontSize: 14, color: "#000458", opacity: 0.8, lineHeight: 20 },
+  card: { borderRadius: 16, padding: 18, marginBottom: 14 },
+  yellowCard: { backgroundColor: "#fce07a" },
+  yellowCardTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#000458",
+    marginLeft: 10,
+    flex: 1,
+  },
+  yellowCardText: {
+    fontSize: 14,
+    color: "#000458",
+    opacity: 0.8,
+    marginTop: 12,
+    lineHeight: 20,
+  },
+  darkCard: { backgroundColor: "#1a2332" },
+  darkCardTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#FFF",
+    marginLeft: 10,
+    flex: 1,
+  },
+  darkCardText: {
+    fontSize: 14,
+    color: "#FFF",
+    opacity: 0.7,
+    marginTop: 12,
+    lineHeight: 20,
+  },
+  cardHeader: { flexDirection: "row", alignItems: "center" },
+  selectedCardBorder: { borderWidth: 3, borderColor: "#4ade80" },
   checkBadge: {
-    backgroundColor: '#4ade80',
-    width: 22, height: 22, borderRadius: 11,
-    justifyContent: 'center', alignItems: 'center',
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: "#4ade80",
+    alignItems: "center",
+    justifyContent: "center",
   },
-  footer: { marginTop: 'auto', padding: 22 },
+  footer: { marginTop: "auto", paddingBottom: 24 },
   continueBtn: {
-    backgroundColor: '#000458',
-    paddingVertical: 18, borderRadius: 14, alignItems: 'center',
+    backgroundColor: "#000458",
+    borderRadius: 14,
+    paddingVertical: 16,
+    alignItems: "center",
   },
-  continueBtnText: { color: '#FFF', fontSize: 18, fontWeight: '800' },
+  continueBtnText: { color: "#FFF", fontSize: 18, fontWeight: "800" },
 });

@@ -1,20 +1,17 @@
 import * as Haptics from "expo-haptics";
+import { usePathname, useRouter } from "expo-router";
 import { Accelerometer } from "expo-sensors";
-import { useRouter, usePathname } from "expo-router";
 import { useEffect, useRef } from "react";
 import { Platform } from "react-native";
 
-/** Acceleration magnitude (g) that counts as a shake spike. */
+// Shake detection settings 
 const SHAKE_THRESHOLD = 2.35;
-/** Spikes needed within the window to confirm a shake. */
 const SPIKES_NEEDED = 2;
-/** Window to collect spikes (ms). */
 const SPIKE_WINDOW_MS = 900;
-/** Ignore further shakes after triggering (ms). */
 const COOLDOWN_MS = 4000;
-/** Sensor sample interval (ms). */
 const UPDATE_INTERVAL_MS = 80;
 
+// Don't open panic again if we're already on a panic-related screen.
 const PANIC_ROUTES = [
   "/panic",
   "/(tabs)/panic",
@@ -29,10 +26,7 @@ function isOnPanicRoute(pathname: string | null | undefined) {
   );
 }
 
-/**
- * Listens for a firm phone shake and opens the panic countdown screen.
- * No UI — mount once inside the student tab shell.
- */
+// Listens for a firm shake and opens the panic screen (students only).
 export function ShakeToPanicListener() {
   const router = useRouter();
   const pathname = usePathname();
@@ -47,6 +41,7 @@ export function ShakeToPanicListener() {
   }, [pathname]);
 
   useEffect(() => {
+    // Shake needs the accelerometer — skip on web.
     if (Platform.OS === "web") return;
 
     let subscription: { remove: () => void } | null = null;
@@ -64,6 +59,7 @@ export function ShakeToPanicListener() {
         const magnitude = Math.sqrt(x * x + y * y + z * z);
         const now = Date.now();
 
+        // After a shake we pause briefly so it doesn’t re-trigger.
         if (now < cooldownUntil.current) {
           lastMagnitude.current = magnitude;
           return;
@@ -77,6 +73,7 @@ export function ShakeToPanicListener() {
 
         if (!crossed) return;
 
+        // Need a few spikes close together before we treat it as a shake.
         if (now - lastSpikeAt.current > SPIKE_WINDOW_MS) {
           spikeCount.current = 0;
         }
@@ -97,6 +94,7 @@ export function ShakeToPanicListener() {
           /* haptics optional */
         }
 
+        // Open the panic tab so the countdown can start.
         router.push("/(tabs)/panic");
       });
     })();
@@ -107,5 +105,6 @@ export function ShakeToPanicListener() {
     };
   }, [router]);
 
+  // Invisible listener — no UI of its own.
   return null;
 }

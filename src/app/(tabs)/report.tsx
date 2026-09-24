@@ -14,27 +14,33 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafetyModes } from "@/context/SafetyModesContext";
 import { useTheme } from "@/context/ThemeContext";
+import { useLocale } from "@/i18n/LocaleContext";
 import {
   CAMPUS_LOCATIONS,
   REPORT_TYPES,
   type ReportType,
 } from "@/data/mockData";
 
-const TOGGLE_OFF = "#C4C4C4";
-
 export default function ReportScreen() {
   const { colors } = useTheme();
+  const { t } = useLocale();
+  const { anonymousDefault, effectiveLowData, scale } = useSafetyModes();
   const [reportType, setReportType] = useState<ReportType>(REPORT_TYPES[0]);
   const [location, setLocation] = useState(CAMPUS_LOCATIONS[0]);
   const [description, setDescription] = useState("");
   const [followUp, setFollowUp] = useState(true);
-  const [anonymous, setAnonymous] = useState(true);
+  const [anonymous, setAnonymous] = useState(anonymousDefault);
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [showTypes, setShowTypes] = useState(false);
   const [showLocations, setShowLocations] = useState(false);
   const slide = useRef(new Animated.Value(48)).current;
   const opacity = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    setAnonymous(anonymousDefault);
+  }, [anonymousDefault]);
 
   useEffect(() => {
     Animated.parallel([
@@ -81,7 +87,7 @@ export default function ReportScreen() {
   return (
     <SafeAreaView
       style={[styles.safe, { backgroundColor: colors.bg }]}
-      edges={["top", "bottom"]}
+      edges={["bottom"]}
     >
       <Animated.View
         style={{ flex: 1, opacity, transform: [{ translateY: slide }] }}
@@ -92,7 +98,7 @@ export default function ReportScreen() {
           keyboardShouldPersistTaps="handled"
         >
           <Text style={[styles.heading, { color: colors.text }]}>
-            Share a safety concern
+            {t("shareConcern")}
           </Text>
           <Text style={[styles.subheading, { color: colors.textMuted }]}>
             Your report can help improve campus safety. Tell us what kind of
@@ -116,12 +122,12 @@ export default function ReportScreen() {
               Status
             </Text>
             <Text style={[styles.metaValue, { color: colors.accent }]}>
-              Draft → Submitted on send
+              Draft · Submitted on send
             </Text>
           </View>
 
           <Text style={[styles.label, { color: colors.accent }]}>
-            Type of concern
+            {t("typeOfConcern")}
           </Text>
           <TouchableOpacity
             style={[styles.select, { backgroundColor: colors.tile }]}
@@ -157,7 +163,9 @@ export default function ReportScreen() {
             </View>
           ) : null}
 
-          <Text style={[styles.label, { color: colors.accent }]}>Location</Text>
+          <Text style={[styles.label, { color: colors.accent }]}>
+            {t("locationLabel")}
+          </Text>
           <TouchableOpacity
             style={[styles.select, { backgroundColor: colors.tile }]}
             onPress={() => {
@@ -197,7 +205,7 @@ export default function ReportScreen() {
           ) : null}
 
           <Text style={[styles.label, { color: colors.accent }]}>
-            Description
+            {t("descriptionLabel")}
           </Text>
           <TextInput
             style={[
@@ -209,124 +217,171 @@ export default function ReportScreen() {
             ]}
             multiline
             numberOfLines={5}
-            placeholder="Share what happened, in your own words…"
+            placeholder={t("descriptionPlaceholder")}
             placeholderTextColor={colors.textDim}
             value={description}
             onChangeText={setDescription}
           />
 
-          <Text style={[styles.label, { color: colors.accent }]}>
-            Optional photo
-          </Text>
-          {photoUri ? (
-            <View
-              style={[styles.photoPreviewWrap, { backgroundColor: colors.card }]}
-            >
-              <Image source={{ uri: photoUri }} style={styles.photoPreview} />
-              <View style={styles.photoActions}>
-                <TouchableOpacity
-                  style={[styles.photoActionBtn, { backgroundColor: colors.tile }]}
-                  onPress={pickPhoto}
+          {!effectiveLowData ? (
+            <>
+              <Text style={[styles.label, { color: colors.accent }]}>
+                {t("photoOptional")}
+              </Text>
+              {photoUri ? (
+                <View
+                  style={[
+                    styles.photoPreviewWrap,
+                    { backgroundColor: colors.card },
+                  ]}
                 >
-                  <Text style={[styles.photoActionText, { color: colors.navy }]}>
-                    Change
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.photoActionBtn, { backgroundColor: colors.tile }]}
-                  onPress={() => setPhotoUri(null)}
+                  <Image
+                    source={{ uri: photoUri }}
+                    style={styles.photoPreview}
+                  />
+                  <View style={styles.photoActions}>
+                    <TouchableOpacity
+                      style={[
+                        styles.photoActionBtn,
+                        { backgroundColor: colors.tile },
+                      ]}
+                      onPress={pickPhoto}
+                    >
+                      <Text
+                        style={[styles.photoActionText, { color: colors.navy }]}
+                      >
+                        Change
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[
+                        styles.photoActionBtn,
+                        { backgroundColor: colors.tile },
+                      ]}
+                      onPress={() => setPhotoUri(null)}
+                    >
+                      <Text
+                        style={[styles.photoActionText, { color: colors.navy }]}
+                      >
+                        Remove
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ) : (
+                <View
+                  style={[
+                    styles.photoBox,
+                    {
+                      backgroundColor: colors.card,
+                      borderColor: colors.accent,
+                    },
+                  ]}
                 >
-                  <Text style={[styles.photoActionText, { color: colors.navy }]}>
-                    Remove
+                  <Ionicons
+                    name="camera-outline"
+                    size={28}
+                    color={colors.accent}
+                  />
+                  <Text style={[styles.photoText, { color: colors.textMuted }]}>
+                    Add a photo of the area or concern
                   </Text>
-                </TouchableOpacity>
-              </View>
-            </View>
+                  <View style={styles.photoActions}>
+                    <TouchableOpacity
+                      style={[
+                        styles.photoActionBtn,
+                        { backgroundColor: colors.tile },
+                      ]}
+                      onPress={takePhoto}
+                    >
+                      <Ionicons name="camera" size={16} color={colors.navy} />
+                      <Text
+                        style={[styles.photoActionText, { color: colors.navy }]}
+                      >
+                        Camera
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[
+                        styles.photoActionBtn,
+                        { backgroundColor: colors.tile },
+                      ]}
+                      onPress={pickPhoto}
+                    >
+                      <Ionicons
+                        name="images-outline"
+                        size={16}
+                        color={colors.navy}
+                      />
+                      <Text
+                        style={[styles.photoActionText, { color: colors.navy }]}
+                      >
+                        Gallery
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
+            </>
           ) : (
-            <View
+            <Text
               style={[
-                styles.photoBox,
-                {
-                  backgroundColor: colors.card,
-                  borderColor: colors.accent,
-                },
+                styles.toggleSub,
+                { color: colors.textMuted, marginBottom: 12, fontSize: 12 * scale },
               ]}
             >
-              <Ionicons name="camera-outline" size={28} color={colors.accent} />
-              <Text style={[styles.photoText, { color: colors.textMuted }]}>
-                Add a photo of the area or concern
-              </Text>
-              <View style={styles.photoActions}>
-                <TouchableOpacity
-                  style={[styles.photoActionBtn, { backgroundColor: colors.tile }]}
-                  onPress={takePhoto}
-                >
-                  <Ionicons name="camera" size={16} color={colors.navy} />
-                  <Text style={[styles.photoActionText, { color: colors.navy }]}>
-                    Camera
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.photoActionBtn, { backgroundColor: colors.tile }]}
-                  onPress={pickPhoto}
-                >
-                  <Ionicons name="images-outline" size={16} color={colors.navy} />
-                  <Text style={[styles.photoActionText, { color: colors.navy }]}>
-                    Gallery
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </View>
+                {t("photoHiddenLowData")}
+            </Text>
           )}
 
           <View style={[styles.toggleCard, { backgroundColor: colors.cardAlt }]}>
             <View style={{ flex: 1 }}>
               <Text style={[styles.toggleTitle, { color: colors.text }]}>
-                Request follow-up
+                {t("requestFollowUp")}
               </Text>
               <Text style={[styles.toggleSub, { color: colors.textMuted }]}>
-                Ask security to contact you about this report
+                {t("requestFollowUpSub")}
               </Text>
             </View>
             <Switch
               value={followUp}
               onValueChange={setFollowUp}
-              trackColor={{ false: TOGGLE_OFF, true: colors.navy }}
+              trackColor={{ false: colors.textDim, true: colors.navy }}
               thumbColor={colors.white}
-              ios_backgroundColor={TOGGLE_OFF}
+              ios_backgroundColor={colors.textDim}
             />
           </View>
 
           <View style={[styles.toggleCard, { backgroundColor: colors.cardAlt }]}>
             <View style={{ flex: 1 }}>
               <Text style={[styles.toggleTitle, { color: colors.text }]}>
-                Submit anonymously
+                {t("submitAnonymously")}
               </Text>
               <Text style={[styles.toggleSub, { color: colors.textMuted }]}>
-                Your identity stays hidden from the report record
+                {t("submitAnonymouslySub")}
               </Text>
             </View>
             <Switch
               value={anonymous}
               onValueChange={setAnonymous}
-              trackColor={{ false: TOGGLE_OFF, true: colors.navy }}
+              trackColor={{ false: colors.textDim, true: colors.navy }}
               thumbColor={colors.white}
-              ios_backgroundColor={TOGGLE_OFF}
+              ios_backgroundColor={colors.textDim}
             />
           </View>
 
           <TouchableOpacity
-            style={[styles.submitBtn, { backgroundColor: colors.accent }]}
+            style={[styles.submitBtn, { backgroundColor: colors.navy }]}
             onPress={() => router.push("/report-success")}
           >
-            <Text style={[styles.submitText, { color: colors.bgDeep }]}>
-              Submit safety concern
+            <Text style={[styles.submitText, { color: colors.bg }]}>
+              {t("submitConcern")}
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity onPress={() => router.push("/support")}>
-            <Text style={[styles.supportLinkText, { color: colors.accent }]}>
-              Need support now? Open Support Services →
+            <Text style={[styles.supportLinkText, { color: colors.navy }]}>
+              {t("needSupportNow")}
             </Text>
           </TouchableOpacity>
 

@@ -1,12 +1,15 @@
 import { useEffect, useMemo, useRef } from "react";
 import { Platform, StyleSheet, View } from "react-native";
 import { WebView, type WebViewMessageEvent } from "react-native-webview";
+import { useTheme } from "@/context/ThemeContext";
 import {
   CAMPUS_CENTER,
   MAP_LAYER_POINTS,
   type MapLayerKey,
   type MapPoint,
 } from "@/data/mapData";
+
+// Campus map inside a WebView. React Native talks to it with postMessage.
 
 export type MapCommand =
   | { type: "setMode"; mode: "2d" | "3d" }
@@ -18,6 +21,7 @@ export type MapCommand =
   | { type: "setBase"; base: "street" | "satellite" }
   | { type: "setLiveLocation"; lat: number; lng: number; follow?: boolean };
 
+// Events the map page sends back (clicks, sim progress, ready).
 export type MapEvent =
   | { type: "ready" }
   | { type: "mapClick"; lat: number; lng: number }
@@ -35,12 +39,15 @@ type Props = {
   simulating: boolean;
   liveLocation: { lat: number; lng: number } | null;
   followLive?: boolean;
+  youLabel?: string;
   onEvent: (event: MapEvent) => void;
 };
 
-function buildHtml(points: MapPoint[]) {
+function buildHtml(points: MapPoint[], youLabel: string) {
+  // Leaflet HTML that runs inside the WebView.
   const pointsJson = JSON.stringify(points);
   const centerJson = JSON.stringify(CAMPUS_CENTER);
+  const youSafe = JSON.stringify(youLabel);
 
   return `<!DOCTYPE html>
 <html>
@@ -82,6 +89,7 @@ function buildHtml(points: MapPoint[]) {
   <script>
     const POINTS = ${pointsJson};
     const CENTER = ${centerJson};
+    const YOU_LABEL = ${youSafe};
     const COLORS = {
       danger: '#EAB308',
       security: '#F5C842',
@@ -131,7 +139,7 @@ function buildHtml(points: MapPoint[]) {
     let liveMarker = L.marker([CENTER.lat, CENTER.lng], {
       icon: L.divIcon({
         className: '',
-        html: '<div style="display:flex;flex-direction:column;align-items:center;gap:4px"><div class="you-label">You</div><div class="live-dot"></div></div>',
+        html: '<div style="display:flex;flex-direction:column;align-items:center;gap:4px"><div class="you-label">' + YOU_LABEL + '</div><div class="live-dot"></div></div>',
         iconSize: [48, 40],
         iconAnchor: [24, 36]
       })
@@ -384,14 +392,18 @@ export function CampusMap({
   simulating,
   liveLocation,
   followLive = false,
+  youLabel = "You",
   onEvent,
 }: Props) {
+  const { colors } = useTheme();
   const ref = useRef<WebView>(null);
   const ready = useRef(false);
 
-  const html = useMemo(() => buildHtml(MAP_LAYER_POINTS), []);
+  const html = useMemo(() => buildHtml(MAP_LAYER_POINTS, youLabel), [youLabel]);
+  const wrapStyle = [styles.wrap, { backgroundColor: colors.bgDeep }];
 
   const send = (cmd: MapCommand) => {
+    // Push a command into the Leaflet / MapLibre page.
     const payload = JSON.stringify(cmd);
     if (Platform.OS === "web") {
       const iframe = document.querySelector(
@@ -444,6 +456,7 @@ export function CampusMap({
   }, [liveLocation, followLive]);
 
   const onMessage = (event: WebViewMessageEvent) => {
+    // Map → React Native: ready, clicks, walk simulation progress.
     try {
       const data = JSON.parse(event.nativeEvent.data) as MapEvent;
       if (data.type === "ready") {
@@ -485,7 +498,7 @@ export function CampusMap({
 
   if (Platform.OS === "web") {
     return (
-      <View style={styles.wrap}>
+      <View style={wrapStyle}>
         <iframe
           data-campus-map="1"
           title="Campus map"
@@ -498,7 +511,7 @@ export function CampusMap({
   }
 
   return (
-    <View style={styles.wrap}>
+    <View style={wrapStyle}>
       <WebView
         ref={ref}
         originWhitelist={["*"]}
@@ -516,7 +529,7 @@ export function CampusMap({
 }
 
 const styles = StyleSheet.create({
-  wrap: { flex: 1, overflow: "hidden", backgroundColor: "#0b1b3a" },
+  wrap: { flex: 1, overflow: "hidden" },
   webview: { flex: 1, backgroundColor: "transparent" },
   iframe: {
     borderWidth: 0,

@@ -1,5 +1,6 @@
 import { ALERT_LEVEL_COLORS } from "@/constants/theme";
 import { useTheme } from "@/context/ThemeContext";
+import { useLocale } from "@/i18n/LocaleContext";
 import { SAFETY_ALERTS, type SafetyAlert } from "@/data/mockData";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
@@ -30,7 +31,7 @@ function AlertCard({
             { backgroundColor: ALERT_LEVEL_COLORS[alert.alertLevel] },
           ]}
         >
-          <Text style={[styles.levelBadgeText, { color: colors.bg }]}> 
+          <Text style={[styles.levelBadgeText, { color: colors.white }]}>
             {alert.alertLevel}
           </Text>
         </View>
@@ -53,6 +54,7 @@ function AlertCard({
 
 export default function AlertsScreen() {
   const { colors } = useTheme();
+  const { t } = useLocale();
   const slide = useRef(new Animated.Value(40)).current;
   const opacity = useRef(new Animated.Value(0)).current;
 
@@ -93,7 +95,7 @@ export default function AlertsScreen() {
             onPress={() => router.push("/support")}
           >
             <Ionicons name="heart" size={20} color="#FFFFFF" />
-            <Text style={styles.supportTitle}>Need support right now?</Text>
+            <Text style={styles.supportTitle}>{t("needSupportNow")}</Text>
             <Text style={styles.arrow}>→</Text>
           </TouchableOpacity>
           <View style={{ height: 40 }} />

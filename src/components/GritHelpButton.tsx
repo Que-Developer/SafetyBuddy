@@ -1,32 +1,52 @@
 import { useTheme } from "@/context/ThemeContext";
+import { useA11y } from "@/hooks/useA11y";
+import { useLocale } from "@/i18n/LocaleContext";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import { useEffect, useRef, useState } from "react";
 import {
   Animated,
   Platform,
+  Pressable,
   StyleSheet,
   Text,
   View,
 } from "react-native";
 
-const COUNTDOWN_START = 5; // seconds
-const TICK_MS = 500;      // 1 second per tick
+const COUNTDOWN_START = 4;
+const TICK_MS = 700;
 
 type Props = {
   onActivated: () => void;
   onCancelled?: () => void;
+  silent?: boolean;
 };
 
-export function GritHelpButton({ onActivated, onCancelled }: Props) {
-  const { colors } = useTheme();
-  const [seconds, setSeconds] = useState(COUNTDOWN_START);
+// Big countdown button. Tap it to cancel before help is sent.
+export function GritHelpButton({
+  onActivated,
+  onCancelled,
+  silent = false,
+}: Props) {
+  const { colors, selectedTheme } = useTheme();
+  const { t } = useLocale();
+  const a11y = useA11y();
+  // Silent / a11y mode uses a shorter countdown.
+  const startSeconds = silent ? 2 : COUNTDOWN_START;
+  const [seconds, setSeconds] = useState(startSeconds);
   const pulse = useRef(new Animated.Value(1)).current;
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const hasFired = useRef(false);
+  const cancelled = useRef(false);
+  // Skip the pulse animation when the student wants less motion.
+  const reduceMotion = silent || a11y.reduceMotion;
 
-  // --- PULSE ANIMATION ---
   useEffect(() => {
+    if (reduceMotion) {
+      pulse.setValue(1);
+      return;
+    }
+    // Soft pulse so the button feels urgent without being noisy.
     const useNative = Platform.OS !== "web";
     const loop = Animated.loop(
       Animated.sequence([
@@ -44,146 +64,210 @@ export function GritHelpButton({ onActivated, onCancelled }: Props) {
     );
     loop.start();
     return () => loop.stop();
-  }, [pulse]);
+  }, [pulse, reduceMotion]);
 
-  // --- AUTO-START COUNTDOWN ON MOUNT ---
   useEffect(() => {
-    try {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    } catch {}
+    cancelled.current = false;
+    hasFired.current = false;
+    let remaining = startSeconds;
+    setSeconds(remaining);
 
-    let remaining = COUNTDOWN_START;
-
-    intervalRef.current = setInterval(() => {
-      remaining -= 1;
-
-      // Tick haptic on each second
+    // Buzz once when the countdown starts (skipped in silent mode).
+    if (!silent && !a11y.reduceMotion) {
       try {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      } catch {}
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      } catch {
+        /* web */
+      }
+    }
 
+    // Tick down; when we hit zero, fire onActivated once.
+    intervalRef.current = setInterval(() => {
+      if (cancelled.current) return;
+      remaining -= 1;
+      setSeconds(remaining);
+      if (!silent && !a11y.reduceMotion) {
+        try {
+          Haptics.selectionAsync();
+        } catch {
+          /* web */
+        }
+      }
       if (remaining <= 0) {
         if (intervalRef.current) clearInterval(intervalRef.current);
-        intervalRef.current = null;
-        if (!hasFired.current) {
+        if (!hasFired.current && !cancelled.current) {
           hasFired.current = true;
-          try {
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-          } catch {}
           onActivated();
         }
-        return;
       }
-
-      setSeconds(remaining);
     }, TICK_MS);
 
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [onActivated]);
+  }, [onActivated, startSeconds, silent, a11y.reduceMotion]);
 
-  // Called from outside by a Cancel button (in the parent screen)
-  // We expose this via onCancelled — parent triggers via key change or state.
+  const handleCancelTap = () => {
+    // Student tapped in time — stop the timer before help is sent.
+    if (cancelled.current || hasFired.current) return;
+    cancelled.current = true;
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    if (!silent && !a11y.reduceMotion) {
+      try {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      } catch {
+        /* web */
+      }
+    }
+    onCancelled?.();
+  };
+
+  const isDark = selectedTheme === "dark";
+  const coreSize = a11y.enabled ? 220 : 200;
+  const ringSize = a11y.enabled ? 272 : 248;
 
   return (
-    <Animated.View
-      style={[styles.wrap, { transform: [{ scale: pulse }] }]}
+    <Pressable
+      onPress={handleCancelTap}
+      accessibilityRole="button"
+      accessibilityLabel={t("tapToCancelCountdown")}
+      accessibilityHint={t("cancelIfAccidental")}
+      style={{ minWidth: a11y.hit * 4, minHeight: a11y.hit * 4 }}
     >
-      {/* Glow halo */}
-      <View style={styles.glowFar} />
-      <View style={styles.glowNear} />
-      <View style={styles.glowRing}>
-        <LinearGradient
-          colors={
-            colors.bg === "#002B5B" || colors.bg === "#1a2332"
-              ? ["#2A3A55", "#1E2E45", "#152238"]
-              : ["#1E4A88", "#143560", "#0C2348"]
-          }
-          start={{ x: 0.25, y: 0 }}
-          end={{ x: 0.75, y: 1 }}
-          style={styles.core}
+      <Animated.View
+        style={[
+          styles.wrap,
+          {
+            width: ringSize + 72,
+            height: ringSize + 72,
+            transform: [{ scale: pulse }],
+          },
+        ]}
+      >
+        {!reduceMotion && (
+          <>
+            <View
+              style={[
+                styles.glowFar,
+                {
+                  width: ringSize + 64,
+                  height: ringSize + 64,
+                  borderRadius: (ringSize + 64) / 2,
+                },
+              ]}
+            />
+            <View
+              style={[
+                styles.glowNear,
+                {
+                  width: ringSize + 28,
+                  height: ringSize + 28,
+                  borderRadius: (ringSize + 28) / 2,
+                },
+              ]}
+            />
+          </>
+        )}
+        <View
+          style={[
+            styles.glowRing,
+            {
+              width: ringSize,
+              height: ringSize,
+              borderRadius: ringSize / 2,
+            },
+            reduceMotion && {
+              borderColor: "#64748B",
+              shadowOpacity: 0,
+              elevation: 0,
+            },
+          ]}
         >
-          <Text style={styles.pressLabel}>SENDING IN</Text>
-          <Text style={styles.countdownText}>{seconds}</Text>
-          <Text style={styles.tapToCancel}>CANCEL BELOW</Text>
-        </LinearGradient>
-      </View>
-    </Animated.View>
+          <LinearGradient
+            colors={
+              reduceMotion
+                ? ["#1F2937", "#111827", "#0B1220"]
+                : isDark
+                  ? ["#2A3A55", "#1E2E45", "#152238"]
+                  : ["#1E4A88", "#143560", "#0C2348"]
+            }
+            start={{ x: 0.25, y: 0 }}
+            end={{ x: 0.75, y: 1 }}
+            style={[
+              styles.core,
+              {
+                width: coreSize,
+                height: coreSize,
+                borderRadius: coreSize / 2,
+              },
+            ]}
+          >
+            <Text
+              style={[
+                styles.pressLabel,
+                { fontSize: 13 * a11y.scale, color: colors.white },
+              ]}
+            >
+              {silent ? t("silentSend") : t("sendingIn")}
+            </Text>
+            <Text
+              style={[
+                styles.countdownText,
+                { fontSize: 64 * a11y.scale, color: colors.white },
+              ]}
+            >
+              {seconds}
+            </Text>
+            <Text
+              style={[
+                styles.tapToCancel,
+                { fontSize: 14 * a11y.scale, color: colors.accent },
+              ]}
+            >
+              {t("tapToCancelCountdown")}
+            </Text>
+          </LinearGradient>
+        </View>
+      </Animated.View>
+    </Pressable>
   );
 }
 
-const CORE = 200;
-const RING = 248;
-
 const styles = StyleSheet.create({
-  wrap: {
-    width: RING + 72,
-    height: RING + 72,
-    alignItems: "center",
-    justifyContent: "center",
-  },
+  wrap: { alignItems: "center", justifyContent: "center" },
   glowFar: {
     position: "absolute",
-    width: RING + 64,
-    height: RING + 64,
-    borderRadius: (RING + 64) / 2,
     backgroundColor: "rgba(255, 55, 30, 0.16)",
   },
   glowNear: {
     position: "absolute",
-    width: RING + 28,
-    height: RING + 28,
-    borderRadius: (RING + 28) / 2,
     backgroundColor: "rgba(255, 75, 40, 0.38)",
     shadowColor: "#FF3B1A",
     shadowOpacity: 1,
     shadowRadius: 28,
     shadowOffset: { width: 0, height: 0 },
-    elevation: 18,
   },
   glowRing: {
-    width: RING,
-    height: RING,
-    borderRadius: RING / 2,
+    borderWidth: 4,
+    borderColor: "#FF4D2E",
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 18,
-    borderColor: "#FF4E2A",
-    backgroundColor: "transparent",
-    shadowColor: "#FF5A28",
-    shadowOpacity: 0.95,
+    shadowColor: "#FF3B1A",
+    shadowOpacity: 0.55,
     shadowRadius: 18,
     shadowOffset: { width: 0, height: 0 },
+    elevation: 12,
   },
   core: {
-    width: CORE,
-    height: CORE,
-    borderRadius: CORE / 2,
     alignItems: "center",
     justifyContent: "center",
+    paddingHorizontal: 16,
   },
   pressLabel: {
-    color: "#FFFFFF",
-    fontSize: 13,
-    fontWeight: "600",
-    letterSpacing: 1.5,
-    marginBottom: 2,
-    textTransform: "uppercase",
-  },
-  countdownText: {
-    color: "#FFFFFF",
-    fontSize: 90,
-    fontWeight: "900",
-    lineHeight: 96,
-    letterSpacing: 2,
-  },
-  tapToCancel: {
-    color: "#FFD1D1",
-    fontSize: 10,
     fontWeight: "700",
-    letterSpacing: 1.2,
-    marginTop: 2,
-    textTransform: "uppercase",
+    letterSpacing: 0.4,
+    textAlign: "center",
   },
+  countdownText: { fontWeight: "900", marginVertical: 4 },
+  tapToCancel: { fontWeight: "800", textAlign: "center", marginTop: 4 },
 });

@@ -1,141 +1,166 @@
 import { GritHelpButton } from "@/components/GritHelpButton";
+import { useSafetyModes } from "@/context/SafetyModesContext";
 import { useTheme } from "@/context/ThemeContext";
-import { loadTrustedContacts, type TrustedContact } from "@/services/contacts";
-import { getSharedLocation, type SharedLocation } from "@/services/location";
+import { useA11y } from "@/hooks/useA11y";
+import { useLocale } from "@/i18n/LocaleContext";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { useCallback, useState } from "react";
+import {
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-/**
- * Panic tab:
- *  - Phase 1 (idle): Grit button auto-counts down 5 → 1
- *  - Phase 2 (sent): 2-second confirmation → auto-redirects to Calling Security
- */
+// Panic tab — countdown, then jump to the calling / send-alert screen.
 export default function PanicScreen() {
   const router = useRouter();
   const { colors } = useTheme();
-  const [phase, setPhase] = useState<"idle" | "sent">("idle");
-  const [location, setLocation] = useState<SharedLocation | null>(null);
-  const [contacts, setContacts] = useState<TrustedContact[]>([]);
+  const { t } = useLocale();
+  const a11y = useA11y();
+  const { silentPanicMode, batteryLow, effectiveLowData } = useSafetyModes();
+  // Remount the button after cancel so the countdown starts fresh.
+  const [buttonKey, setButtonKey] = useState(0);
 
-  useEffect(() => {
-    getSharedLocation().then(setLocation);
-    loadTrustedContacts().then(setContacts);
-  }, []);
+  const startAlert = useCallback(() => {
+    // Countdown done — open the screen that actually sends the SOS.
+    router.replace("/panicCountdownAlert");
+  }, [router]);
 
-  // When phase becomes "sent", wait 2 seconds then redirect to Calling Security
-  useEffect(() => {
-    if (phase !== "sent") return;
-    const t = setTimeout(() => {
-      router.replace("/panicCountdownAlert");
-    }, 2000);
-    return () => clearTimeout(t);
-  }, [phase, router]);
-
-  const startAlert = () => {
-    setPhase("sent");
-  };
-
-  const cancel = () => {
-    setPhase("idle");
+  const cancel = useCallback(() => {
+    // Accidental tap — bump the key and show the canceled screen.
+    setButtonKey((k) => k + 1);
     router.replace("/AlertCanceled");
-  };
+  }, [router]);
 
-  // ==========================================
-  // PHASE 1: IDLE — Grit button auto-countdown
-  // ==========================================
-  if (phase === "idle") {
-    return (
-      <SafeAreaView
-        style={[styles.safe, { backgroundColor: colors.bg }]}
-        edges={["top", "bottom"]}
-      >
-        <Text style={[styles.title, { color: colors.text }]}>
-          Sending emergency alert
-        </Text>
-        <Text style={[styles.sub, { color: colors.textMuted }]}>
-          The alert will be sent automatically in a few seconds. Tap cancel
-          below if this was a mistake.
-        </Text>
 
-        <View style={styles.center}>
-          <GritHelpButton onActivated={startAlert} />
-        </View>
-
-        <TouchableOpacity
-          style={[styles.cancelBtn, { backgroundColor: colors.navy }]}
-          onPress={cancel}
-        >
-          <Text style={[styles.cancelText, { color: colors.bg }]}>
-            I'm safe — cancel alert
-          </Text>
-        </TouchableOpacity>
-      </SafeAreaView>
-    );
-  }
-
-  // ==========================================
-  // PHASE 2: SENT — 2-second confirmation card
-  // ==========================================
   return (
     <SafeAreaView
       style={[styles.safe, { backgroundColor: colors.bg }]}
-      edges={["top", "bottom"]}
+      edges={["bottom"]}
+      accessibilityLabel={t("panicTitle")}
     >
-      <Text style={[styles.title, { color: colors.text }]}>
-        Sending emergency alert
+      <Text
+        style={[
+          styles.title,
+          {
+            color: a11y.text,
+            fontSize: a11y.title,
+            fontWeight: a11y.fontWeight,
+          },
+        ]}
+        accessibilityRole="header"
+      >
+        {t("sendingHelp")}
       </Text>
-      <Text style={[styles.sub, { color: colors.textMuted }]}>
-        The alert will be sent automatically in a few seconds. You can also
-        start this by shaking your phone from any tab. Tap cancel below if
-        this was a mistake.
+      <Text
+        style={[
+          styles.sub,
+          { color: a11y.muted, fontSize: a11y.body, lineHeight: a11y.body * 1.4 },
+        ]}
+      >
+        {t("cancelIfAccidental")}
       </Text>
-
-      <View style={[styles.card, { backgroundColor: colors.card }]}>
-        <View style={styles.greenCircle}>
-          <Ionicons name="checkmark" size={36} color="#fff" />
-        </View>
-        <Text style={[styles.sentTitle, { color: colors.text }]}>
-          Help request sent
+      {/* Quiet mode shortens the countdown so help goes out faster. */}
+      {silentPanicMode && (
+        <Text
+          style={[
+            styles.silentBadge,
+            { color: colors.navy, fontSize: a11y.caption },
+          ]}
+        >
+          {t("silentModeActive")}
         </Text>
-        <Text style={[styles.sub, { color: colors.textMuted }]}>
-          Campus security and your trusted contacts were notified with your
-          location. Connecting you now…
-        </Text>
-      </View>
-
-      <View style={{ flex: 1, marginTop: 12 }}>
-        <View style={[styles.contactRow, { backgroundColor: colors.card }]}>
-          <Text style={[styles.contactName, { color: colors.text }]}>
-            Campus Security
-          </Text>
-          <Text style={[styles.contactSub, { color: colors.textMuted }]}>
-            Alert notified — dispatching
-          </Text>
-        </View>
-        {contacts.slice(0, 3).map((c) => (
-          <View
-            key={c.id}
-            style={[styles.contactRow, { backgroundColor: colors.card }]}
+      )}
+      {/* Battery / low-data cues so the student knows the phone is struggling. */}
+      {batteryLow && (
+        <View
+          style={[styles.cue, { backgroundColor: colors.card, minHeight: a11y.hit }]}
+          accessibilityRole="text"
+          accessibilityLabel={t("batteryLow")}
+        >
+          <Ionicons name="battery-half" size={a11y.icon} color={colors.caution} />
+          <Text
+            style={{
+              color: a11y.text,
+              flex: 1,
+              fontWeight: a11y.fontWeight,
+              fontSize: a11y.caption,
+            }}
           >
-            <Text style={[styles.contactName, { color: colors.text }]}>
-              {c.name}
-            </Text>
-            <Text style={[styles.contactSub, { color: colors.textMuted }]}>
-              via {c.preferredAlertMethod}
-            </Text>
-          </View>
-        ))}
+            {t("batteryLow")}
+          </Text>
+        </View>
+      )}
+      {effectiveLowData && (
+        <View
+          style={[styles.cue, { backgroundColor: colors.card, minHeight: a11y.hit }]}
+          accessibilityRole="text"
+          accessibilityLabel={t("queuedOfflineAlert")}
+        >
+          <Ionicons
+            name="cloud-offline-outline"
+            size={a11y.icon}
+            color={colors.navy}
+          />
+          <Text
+            style={{
+              color: a11y.text,
+              flex: 1,
+              fontWeight: a11y.fontWeight,
+              fontSize: a11y.caption,
+            }}
+          >
+            {t("queuedOfflineAlert")}
+          </Text>
+        </View>
+      )}
+
+      <View style={styles.center}>
+        <GritHelpButton
+          key={buttonKey}
+          onActivated={startAlert}
+          onCancelled={cancel}
+          silent={silentPanicMode || a11y.reduceMotion}
+        />
       </View>
 
       <TouchableOpacity
-        style={[styles.cancelBtn, { backgroundColor: colors.navy }]}
-        onPress={cancel}
+        style={[styles.offlineLink, { minHeight: a11y.hit }]}
+        onPress={() => router.push("/offline-emergency")}
+        accessibilityRole="link"
+        accessibilityLabel={t("offlineEmergency")}
       >
-        <Text style={[styles.cancelText, { color: colors.white }]}>
-          I'm safe — cancel alert
+        <Text
+          style={{
+            color: a11y.muted,
+            fontWeight: a11y.fontWeight,
+            fontSize: a11y.caption,
+          }}
+        >
+          {t("offlineEmergency")}
+        </Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={[
+          styles.cancelBtn,
+          { backgroundColor: colors.navy, minHeight: a11y.hit + 8 },
+        ]}
+        onPress={cancel}
+        accessibilityRole="button"
+        accessibilityLabel={t("imSafe")}
+        accessibilityHint={t("cancelIfAccidental")}
+      >
+        <Text
+          style={[
+            styles.cancelText,
+            { color: colors.bg, fontSize: 16 * a11y.scale },
+          ]}
+        >
+          {t("imSafe")}
         </Text>
       </TouchableOpacity>
     </SafeAreaView>
@@ -144,38 +169,26 @@ export default function PanicScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, padding: 20 },
-  title: { fontSize: 24, fontWeight: "900" },
-  sub: { fontSize: 14, lineHeight: 20, marginTop: 8 },
+  title: {},
+  sub: { marginTop: 8 },
+  silentBadge: { fontWeight: "800", marginTop: 10 },
+  cue: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 10,
+    borderRadius: 12,
+    padding: 10,
+  },
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
-  card: {
-    borderRadius: 20,
-    padding: 28,
-    alignItems: "center",
-    marginTop: 20,
-  },
-  greenCircle: {
-    backgroundColor: "#22C55E",
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 14,
-  },
-  sentTitle: { fontSize: 20, fontWeight: "900", marginBottom: 8 },
+  offlineLink: { alignItems: "center", justifyContent: "center", marginBottom: 12 },
   cancelBtn: {
     marginTop: "auto",
     marginBottom: 24,
-    borderRadius: 28,
-    padding: 18,
-    alignItems: "center",
-  },
-  cancelText: { fontWeight: "800", fontSize: 15 },
-  contactRow: {
     borderRadius: 14,
-    padding: 14,
-    marginBottom: 8,
+    paddingVertical: 16,
+    alignItems: "center",
+    justifyContent: "center",
   },
-  contactName: { fontWeight: "800", fontSize: 15 },
-  contactSub: { fontSize: 12, marginTop: 2 },
+  cancelText: { fontWeight: "900" },
 });

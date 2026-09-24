@@ -20,6 +20,7 @@ import {
 
 const SESSION_KEY = "safetybuddy.sessionUserId";
 
+// Holds the logged-in user for the whole app.
 type AuthContextValue = {
   user: AppUser | null;
   ready: boolean;
@@ -47,6 +48,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [apiOnline, setApiOnline] = useState(false);
 
   useEffect(() => {
+    // On launch: check API health and restore the saved session if any.
     (async () => {
       try {
         await getDb();
@@ -75,6 +77,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const result = await loginUser(trimmedEmail, password);
     if (!result.ok) return result;
 
+    // Keep the user id around so we can restore the session next launch.
     setUser(result.user);
     setApiOnline(true);
     await AsyncStorage.setItem(SESSION_KEY, String(result.user.id));
@@ -102,6 +105,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
       if (!result.ok) return result;
 
+      // New account — treat them as logged in right away.
       setUser(result.user);
       setApiOnline(true);
       await AsyncStorage.setItem(SESSION_KEY, String(result.user.id));
@@ -111,6 +115,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   const logout = useCallback(async () => {
+    // Clear token + saved session so AuthGate sends them to login.
     setUser(null);
     await setAuthToken(null);
     await AsyncStorage.removeItem(SESSION_KEY);

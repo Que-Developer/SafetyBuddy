@@ -1,8 +1,11 @@
 const jwt = require("jsonwebtoken");
 
+// JWT helpers for protecting API routes.
+
 const JWT_SECRET = process.env.JWT_SECRET || "safetybuddy-dev-secret-change-me";
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "12h";
 
+// Put the user id / role into a signed token after login.
 function signToken(user) {
   return jwt.sign(
     {
@@ -16,6 +19,7 @@ function signToken(user) {
   );
 }
 
+// Checks the Bearer token and puts the user on req.auth.
 function requireAuth(req, res, next) {
   const header = req.headers.authorization || "";
   const [scheme, token] = header.split(" ");
@@ -28,6 +32,7 @@ function requireAuth(req, res, next) {
 
   try {
     const payload = jwt.verify(token, JWT_SECRET);
+    // Downstream handlers read req.auth for the current user.
     req.auth = {
       id: Number(payload.sub),
       email: payload.email,
@@ -43,6 +48,7 @@ function requireAuth(req, res, next) {
   }
 }
 
+// Only allow certain roles through (e.g. security_admin).
 function requireRoles(...roles) {
   return (req, res, next) => {
     if (!req.auth) {
@@ -51,6 +57,7 @@ function requireRoles(...roles) {
         error: "Authorization required. Please log in.",
       });
     }
+    // Wrong role → 403, not 401 (they are logged in, just not allowed).
     if (!roles.includes(req.auth.role)) {
       return res.status(403).json({
         ok: false,

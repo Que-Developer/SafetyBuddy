@@ -1,4 +1,5 @@
 import { useTheme } from "@/context/ThemeContext";
+import { useLocale } from "@/i18n/LocaleContext";
 import { SAFETY_RESOURCES } from "@/data/mockData";
 import { Ionicons } from "@expo/vector-icons";
 import { useState } from "react";
@@ -13,8 +14,6 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-
-const GREEN = "#16A34A";
 
 const RESOURCE_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
   "RES-1": "alert-circle",
@@ -35,6 +34,7 @@ if (
 
 export default function ResourcesScreen() {
   const { colors } = useTheme();
+  const { t } = useLocale();
   const [openId, setOpenId] = useState<string | null>(SAFETY_RESOURCES[0]?.id);
 
   const toggle = (id: string) => {
@@ -47,10 +47,12 @@ export default function ResourcesScreen() {
       style={[styles.safe, { backgroundColor: colors.bg }]}
       edges={["bottom"]}
     >
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
+      >
         <Text style={[styles.intro, { color: colors.textMuted }]}>
-          Calm guidance for emergencies, walking, residences, and supporting
-          friends. Tell us what kind of help you need — there is no wrong question.
+          {t("resourcesIntro")}
         </Text>
 
         {SAFETY_RESOURCES.map((r) => {
@@ -70,11 +72,18 @@ export default function ResourcesScreen() {
               activeOpacity={0.9}
             >
               <View style={styles.cardHeader}>
-                <View style={styles.iconWrap}>
-                  <Ionicons name={icon} size={20} color={GREEN} />
+                <View
+                  style={[
+                    styles.iconWrap,
+                    { backgroundColor: colors.success + "22" },
+                  ]}
+                >
+                  <Ionicons name={icon} size={20} color={colors.success} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.title, { color: colors.text }]}>{r.title}</Text>
+                  <Text style={[styles.title, { color: colors.text }]}>
+                    {r.title}
+                  </Text>
                   <Text style={[styles.summary, { color: colors.textMuted }]}>
                     {r.summary}
                   </Text>
@@ -82,11 +91,13 @@ export default function ResourcesScreen() {
                 <Ionicons
                   name={open ? "chevron-up" : "chevron-down"}
                   size={18}
-                  color={GREEN}
+                  color={colors.success}
                 />
               </View>
               {open && (
-                <Text style={[styles.body, { color: colors.text }]}>{r.body}</Text>
+                <Text style={[styles.body, { color: colors.text }]}>
+                  {r.body}
+                </Text>
               )}
             </TouchableOpacity>
           );
@@ -100,11 +111,7 @@ export default function ResourcesScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1 },
   scroll: { padding: 18 },
-  intro: {
-    fontSize: 14,
-    lineHeight: 21,
-    marginBottom: 16,
-  },
+  intro: { fontSize: 14, lineHeight: 21, marginBottom: 16 },
   card: {
     borderRadius: 14,
     padding: 14,
@@ -116,7 +123,6 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "rgba(22,163,74,0.12)",
     alignItems: "center",
     justifyContent: "center",
   },

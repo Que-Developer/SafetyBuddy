@@ -1,4 +1,5 @@
 import { useTheme } from "@/context/ThemeContext";
+import { useLocale } from "@/i18n/LocaleContext";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
@@ -7,6 +8,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 export default function AlertCanceledScreen() {
   const router = useRouter();
   const { colors } = useTheme();
+  const { t } = useLocale();
 
   return (
     <SafeAreaView
@@ -14,25 +16,23 @@ export default function AlertCanceledScreen() {
       edges={["top", "bottom"]}
     >
       <View style={styles.content}>
-        {/* Green success circle — stays green in both themes */}
-        <View style={styles.greenCircle}>
-          <Ionicons name="checkmark" size={50} color="#FFF" />
+        <View style={[styles.greenCircle, { backgroundColor: colors.success }]}>
+          <Ionicons name="checkmark" size={50} color={colors.white} />
         </View>
 
         <Text style={[styles.title, { color: colors.text }]}>
-          Alert cancelled
+          {t("alertCancelled")}
         </Text>
         <Text style={[styles.subtitle, { color: colors.textMuted }]}>
-          You can send another alert at any time. If you still feel unsure,
-          call campus security or open More Help — support is available.
+          {t("alertCancelledSub")}
         </Text>
 
         <TouchableOpacity
-          style={[styles.homeButton, { backgroundColor: colors.accent }]}
+          style={[styles.homeButton, { backgroundColor: colors.navy }]}
           onPress={() => router.replace("/(tabs)/home")}
         >
-          <Text style={[styles.homeButtonText, { color: colors.white }]}> 
-            Return to Home
+          <Text style={[styles.homeButtonText, { color: colors.bg }]}>
+            {t("returnHome")}
           </Text>
         </TouchableOpacity>
 
@@ -40,8 +40,8 @@ export default function AlertCanceledScreen() {
           style={styles.secondary}
           onPress={() => router.replace("/support")}
         >
-          <Text style={[styles.secondaryText, { color: colors.accent }]}>
-            Talk to support services
+          <Text style={[styles.secondaryText, { color: colors.navy }]}>
+            {t("talkToSupport")}
           </Text>
         </TouchableOpacity>
       </View>
@@ -58,39 +58,29 @@ const styles = StyleSheet.create({
     padding: 30,
   },
   greenCircle: {
-    backgroundColor: "#4ade80", // stays green in both themes (safe color)
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    justifyContent: "center",
+    width: 96,
+    height: 96,
+    borderRadius: 48,
     alignItems: "center",
-    marginBottom: 20,
+    justifyContent: "center",
+    marginBottom: 22,
   },
-  title: {
-    fontSize: 26,
-    fontWeight: "bold",
-    marginBottom: 10,
-  },
+  title: { fontSize: 26, fontWeight: "900", textAlign: "center" },
   subtitle: {
-    fontSize: 16,
-    textAlign: "center",
-    marginBottom: 40,
+    fontSize: 15,
     lineHeight: 22,
+    textAlign: "center",
+    marginTop: 10,
+    marginBottom: 28,
   },
   homeButton: {
-    paddingVertical: 18,
-    paddingHorizontal: 40,
-    borderRadius: 30,
+    borderRadius: 28,
+    paddingVertical: 16,
+    paddingHorizontal: 28,
     width: "100%",
     alignItems: "center",
   },
-  homeButtonText: {
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-  secondary: { marginTop: 14 },
-  secondaryText: {
-    fontWeight: "700",
-    textDecorationLine: "underline",
-  },
+  homeButtonText: { fontWeight: "800", fontSize: 16 },
+  secondary: { marginTop: 16, padding: 8 },
+  secondaryText: { fontWeight: "700", fontSize: 14 },
 });

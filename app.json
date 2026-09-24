@@ -51,7 +51,22 @@
         {
           "motionPermission": "SafetyBuddy uses motion sensing so you can shake your phone to trigger an emergency panic alert."
         }
-      ]
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "SafetyBuddy needs camera access to scan campus QR safety checkpoints.",
+          "barcodeScannerEnabled": true,
+          "recordAudioAndroid": false
+        }
+      ],
+      [
+        "expo-contacts",
+        {
+          "contactsPermission": "SafetyBuddy needs access to your contacts so you can pick trusted people to notify during Walk With Me and emergencies."
+        }
+      ],
+      "expo-localization"
     ],
     "experiments": {
       "typedRoutes": true,
